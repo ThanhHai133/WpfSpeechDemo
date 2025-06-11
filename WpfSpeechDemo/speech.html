@@ -857,6 +857,11 @@
             line-height: 1.4;
             transition: all 0.2s ease-in-out;
         }
+        #toggleBtn.active {
+            color: #00ff99;
+            font-weight: bold;
+        }
+
 
 
     </style>
@@ -877,6 +882,8 @@
     <div class="settings-container">
         <button class="settings-toggle" onclick="toggleSettings()">⚙️</button>
         <div class="controls hidden" id="controlsMenu">
+            <button id="toggleBtn" onclick="toggleRecording()">🔊 Bắt đầu</button>
+
             <button onclick="toggleLangBar('source', this)">🗣 Ngôn ngữ Nói</button>
             <button onclick="toggleLangBar('target', this)">🌐 Dịch          </button>
 
@@ -915,6 +922,7 @@
         let latestFinalSentences = [];
         let AZURE_SUBSCRIPTION_KEY = "";
         let AZURE_REGION = "";
+        let isRecording = false;
 
         window.onload = () => {
             highlightActiveLang();
@@ -925,8 +933,12 @@
             });
         };
 
-
         function startRecognizer() {
+            const btn = document.getElementById("toggleBtn");
+            btn.textContent = "⏹️ Ngưng";
+            btn.classList.add("active");
+            isRecording = true;
+
             if (!window.SpeechSDK) return;
 
             if (recognizer) {
@@ -943,6 +955,44 @@
                 initRecognizer();
             }
         }
+
+
+
+        function toggleRecording() {
+            const btn = document.getElementById("toggleBtn");
+
+            if (isRecording) {
+                stopRecognizer();
+                btn.textContent = "🔊 Bắt đầu";
+                btn.classList.remove("active");
+                isRecording = false;
+            } else {
+                startRecognizer();
+                btn.textContent = "⏹️ Ngưng";
+                btn.classList.add("active");
+                isRecording = true;
+            }
+        }
+
+        function stopRecognizer() {
+            const btn = document.getElementById("toggleBtn");
+            btn.textContent = "🔊 Bắt đầu";
+            btn.classList.remove("active");
+            isRecording = false;
+
+            if (recognizer) {
+                recognizer.stopContinuousRecognitionAsync(() => {
+                    recognizer.close();
+                    recognizer = null;
+                    console.log("🛑 Đã ngưng");
+                }, err => {
+                    console.error("❌ Lỗi khi dừng:", err);
+                    recognizer = null;
+                });
+            }
+        }
+
+
 
         function waitForAzureConfig(callback) {
             const maxTry = 100; // giới hạn tránh lặp vô hạn
