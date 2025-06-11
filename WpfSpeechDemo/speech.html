@@ -1,5 +1,485 @@
-﻿
-<!--<!DOCTYPE html>
+﻿<!--<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Speech Translate (Hidden Input)</title>
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            background: #1a2732;
+            color: white;
+            font-family: sans-serif;
+            height: 120vh;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+        }
+
+        .content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding-bottom: 140px;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            padding: 10px;
+            justify-content: center;
+            background: #111;
+            border-top: 1px solid #333;
+        }
+
+        .section {
+            padding: 10px 30px;
+            display: flex;
+            flex-direction: column;
+        }
+
+            .section h3 {
+                font-size: 24px;
+                margin-bottom: 10px;
+            }
+
+        .text-block {
+            height: 90vh;
+            font-size: 10vh;
+            text-align: center;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            border: 1px solid #444;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        #translatedText {
+            color: #e0e0e0;
+            font-style: italic;
+        }
+
+        button {
+            padding: 8px 16px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        #originalSection {
+            display: none;
+        }
+
+        #log {
+            background: #000;
+            color: lime;
+            font-size: 14px;
+            padding: 10px;
+            max-height: 150px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+
+        .settings-container {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 999;
+            bottom: 24px;
+        }
+
+        .settings-toggle {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: #333;
+            color: white;
+            font-size: 24px;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 10px #000;
+            transition: background 0.3s;
+        }
+
+            .settings-toggle:hover {
+                background: #444;
+            }
+
+        .controls {
+            position: absolute;
+            right: 70px;
+            bottom: 0;
+            background: #111;
+            padding: 6px 10px;
+            border-radius: 20px; /* Mềm hơn khung */
+            border: 1px solid #444;
+            display: flex;
+            flex-direction: row;
+            gap: 8px;
+            opacity: 0;
+            transform: translateX(20px);
+            pointer-events: none;
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+
+            .controls.show {
+                opacity: 1;
+                transform: translateX(0);
+                pointer-events: all;
+            }
+
+            .controls button {
+                background: #222;
+                color: white;
+                border: none;
+                padding: 6px 18px; /* 📏 nhỏ lại nhưng dài hơn */
+                font-size: 14px;
+                cursor: pointer;
+                border-radius: 999px;
+                transition: background 0.2s, transform 0.2s;
+                min-height: auto;
+                min-width: auto;
+                white-space: nowrap;
+            }
+
+                .controls button:hover {
+                    background: #444;
+                    transform: scale(1.05);
+                }
+
+        .settings-toggle {
+            box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+        }
+
+        .controls button.active {
+            background: #2a3b4a; /* xanh sáng hoặc bạn đổi màu khác cũng được */
+            color: #fff;
+            font-weight: bold;
+            box-shadow: 0 0 6px rgba(74, 144, 226, 0.8);
+        }
+        .controls button.active {
+            background: #2a3b4a;
+            color: #fff;
+            font-weight: bold;
+            box-shadow: 0 0 6px rgba(74, 144, 226, 0.8);
+        }
+
+    </style>
+</head>
+<body>
+    <div class="content">
+        <div class="section" id="originalSection">
+            <h3>🗣️ Bạn nói:</h3>
+            <div id="originalText" class="text-block"></div>
+        </div>
+
+        <div class="section">
+            <div id="translatedText" class="text-block"></div>
+        </div>
+    </div>
+
+    <h2 id="status" style="text-align: center;">🎤 Đang khởi động...</h2>
+
+    <div class="settings-container">
+        <button class="settings-toggle" onclick="toggleSettings()">⚙️</button>
+        <div class="controls" id="controlsMenu">
+            <button onclick="setLanguage('vi-VN')">🇻🇳 VN</button>
+            <button onclick="setLanguage('en-US')">🇺🇸 US</button>
+            <button onclick="setTranslator('azure')">Azure</button>
+            <button onclick="setTranslator('google')">Google</button>
+            <button onclick="retry()">🔁 Thử lại</button>
+        </div>
+    </div>
+
+
+
+    <div id="log"></div>
+
+    <script>
+        let recognition;
+        let currentLang = 'vi-VN';
+        let isTranslating = false;
+        let speechBuffer = "";
+        let lastProcessTime = Date.now();
+        let translationTimeout = null;
+        let lastSpeechTime = Date.now();
+        let lastBufferContent = "";
+        let isRetrying = false;
+        let currentTranslator = 'azure'; // mặc định
+        let controller = null;
+
+
+        const AZURE_SUBSCRIPTION_KEY = 'adf9fb7c7ff14d758cf44b93da63fbd1';
+        const AZURE_REGION = 'eastasia';
+        const AZURE_ENDPOINT = 'https://api.cognitive.microsofttranslator.com';
+
+        function log(msg) {
+            const logBox = document.getElementById("log");
+            const time = new Date().toLocaleTimeString();
+            const line = `[${time}] ${msg}`;
+            logBox.textContent += line + "\n";
+            logBox.scrollTop = logBox.scrollHeight;
+
+            // Nếu dùng WPF WebView2
+            if (window.chrome?.webview?.postMessage) {
+                chrome.webview.postMessage(line);
+            }
+        }
+
+        function detectAndStart() {
+            if (recognition) recognition.stop();
+
+            recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+            recognition.lang = currentLang;
+            recognition.continuous = true;
+            recognition.interimResults = false;
+
+            recognition.onresult = function (event) {
+                lastSpeechTime = Date.now(); // 🔄 Reset mỗi khi có tiếng nói
+
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    const result = event.results[i];
+                    const transcript = result[0].transcript.trim();
+                    if (transcript.length > 0) {
+                        log("[🎤 Nhận được]", transcript);
+                        speechBuffer += transcript + " ";
+                    }
+                }
+            };
+
+            recognition.onend = function () {
+                log("🔕 Mic đã bị ngắt (onend)");
+            };
+
+
+            recognition.onerror = function (event) {
+                log("⚠️ Lỗi mic: " + event.error);
+                document.getElementById("status").textContent = "⚠️ Lỗi mic: " + event.error;
+            };
+
+            recognition.start();
+            updateStatus();
+        }
+
+        function updateStatus() {
+            const lang = currentLang === 'vi-VN' ? 'Tiếng Việt' : 'English';
+            const time = new Date().toLocaleTimeString();
+            document.getElementById("status").textContent = `🎤 (${time}) Đang nghe bằng ${lang}...`;
+        }
+
+
+
+
+        function retry() {
+            if (isRetrying) return;
+            isRetrying = true;
+            setTimeout(() => isRetrying = false, 3000); // ⏳ Chờ 3s mới cho retry tiếp
+
+            speechBuffer = "";
+            recognition?.stop();
+            document.getElementById("translatedText").textContent = "";
+            log("🔁 Đang khởi động lại...");
+            detectAndStart();
+        }
+
+
+        //function setLanguage(langCode) {
+        //    currentLang = langCode;
+        //    retry();
+        //}
+
+        async function translateViaAzure(text) {
+            const controller = new AbortController();
+            const timeout = setTimeout(() => {
+                log("⏰ Timeout sau 5s với đoạn: " + text);
+                controller.abort();
+            }, 5000);
+
+            try {
+                const sourceLang = currentLang.startsWith('vi') ? 'vi' : 'en';
+                const targetLang = sourceLang === 'vi' ? 'en' : 'vi';
+                const url = `${AZURE_ENDPOINT}/translate?api-version=3.0&from=${sourceLang}&to=${targetLang}`;
+
+                log("🌐 Đang gửi dịch: " + text);
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Ocp-Apim-Subscription-Key': AZURE_SUBSCRIPTION_KEY,
+                        'Ocp-Apim-Subscription-Region': AZURE_REGION,
+                        'Content-type': 'application/json'
+                    },
+                    body: JSON.stringify([{ Text: text }]),
+                    signal: controller.signal
+                });
+
+                const data = await response.json();
+                log("✅ Bản dịch về: " + (data[0]?.translations[0]?.text || '⛔ Không có kết quả'));
+                return data[0]?.translations[0]?.text || '';
+            } catch (err) {
+                log("❌ Lỗi dịch hoặc timeout: " + err.message);
+                return '';
+            } finally {
+                clearTimeout(timeout);
+            }
+        }
+
+        async function translateViaGoogle(text) {
+            const sourceLang = currentLang.startsWith('vi') ? 'vi' : 'en';
+            const targetLang = sourceLang === 'vi' ? 'en' : 'vi';
+
+            if (controller) controller.abort();
+            controller = new AbortController();
+
+            try {
+                const res = await fetch(
+                    `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${sourceLang}&tl=${targetLang}&dt=t&q=${encodeURIComponent(text)}`,
+                    { signal: controller.signal }
+                );
+                const data = await res.json();
+                return data[0].map(item => item[0]).join('');
+            } catch (err) {
+                if (err.name !== 'AbortError') {
+                    log("❌ Google dịch lỗi: " + err.message);
+                }
+                return '';
+            }
+        }
+        function setTranslator(type) {
+            currentTranslator = type;
+
+            log("🌐 Đang sử dụng: " + currentTranslator);
+
+
+            const buttons = document.querySelectorAll("#controlsMenu button");
+            buttons.forEach(btn => btn.classList.remove("active"));
+
+            // Đánh dấu nút ngôn ngữ
+            if (currentLang === 'vi-VN') {
+                buttons[0].classList.add("active");
+            } else if (currentLang === 'en-US') {
+                buttons[1].classList.add("active");
+            }
+
+            // Đánh dấu dịch vụ
+            if (type === 'azure') {
+                buttons[2].classList.add("active");
+            } else if (type === 'google') {
+                buttons[3].classList.add("active");
+            }
+        }
+
+
+
+
+        async function translateNow(text) {
+            isTranslating = true;
+
+            clearTimeout(translationTimeout);
+            translationTimeout = setTimeout(() => {
+                console.warn("🕒 Dịch quá lâu, auto reset isTranslating");
+                isTranslating = false;
+            }, 8000);
+
+            try {
+                log("[📤 Dịch đoạn]", text);
+                let translated = '';
+
+                if (currentTranslator === 'azure') {
+                    translated = await translateViaAzure(text);
+                } else if (currentTranslator === 'google') {
+                    translated = await translateViaGoogle(text);
+                }
+
+                const box = document.getElementById("translatedText");
+                box.textContent += translated + ' ';
+
+                if (box.textContent.length > 4000) {
+                    box.textContent = box.textContent.slice(-4000);
+                }
+                box.scrollTop = box.scrollHeight;
+
+                log("[✅ Hiển thị bản dịch]", translated);
+            } catch (err) {
+                console.error("⚠️ Lỗi khi dịch:", err);
+            } finally {
+                clearTimeout(translationTimeout);
+                isTranslating = false;
+            }
+        }
+
+
+
+        window.onload = () => {
+            detectAndStart();
+
+
+
+            setInterval(() => {
+                if (!isTranslating && speechBuffer.trim().length > 0) {
+                    const now = Date.now();
+                    let words = speechBuffer.trim().split(/\s+/);
+                    log("🌀 Buffer có " + words.length + " từ");
+
+                    if ((words.length >= 8 && now - lastProcessTime > 1000)) {
+                        const chunk = words.slice(0, 8).join(" ");
+                        speechBuffer = words.slice(8).join(" ");
+                        log("🚀 Dịch 8 từ: " + chunk);
+                        translateNow(chunk);
+                        lastProcessTime = now;
+                    } else if (words.length > 0 && now - lastProcessTime > 2000) {
+                        const chunk = words.join(" ");
+                        speechBuffer = "";
+                        log("⌛ Dịch toàn bộ còn lại: " + chunk);
+                        translateNow(chunk);
+                        lastProcessTime = now;
+                    }
+
+                    // 👇 Kiểm tra nếu buffer không đổi trong 12 giây thì restart mic
+                    if (speechBuffer === lastBufferContent && Date.now() - lastSpeechTime > 12000) {
+                        log("🔁 Buffer không đổi trong 12s, restart mic...");
+                        retry(); // chỉ gọi stop(), mic sẽ tự khởi động lại trong onend
+                    } else {
+                        lastBufferContent = speechBuffer;
+                    }
+                }
+
+                if (Date.now() - lastSpeechTime > 30000) {
+                    log("🛑 Không có giọng nói >30s, restart lại mic...");
+                    retry();
+                }
+            }, 300);
+
+        };
+
+        function toggleSettings() {
+            const menu = document.getElementById("controlsMenu");
+            menu.classList.toggle("show");
+        }
+        function setLanguage(langCode) {
+            currentLang = langCode;
+            retry();
+
+            // Đánh dấu nút nào đang được chọn
+            const buttons = document.querySelectorAll("#controlsMenu button");
+            buttons.forEach(btn => btn.classList.remove("active"));
+
+            if (langCode === 'vi-VN') {
+                buttons[0].classList.add("active"); // nút VN
+            } else if (langCode === 'en-US') {
+                buttons[1].classList.add("active"); // nút US
+            }
+        }
+
+
+    </script>
+</body>
+</html>-->
+
+
+
+<!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8">
@@ -167,75 +647,6 @@
             font-weight: bold;
             box-shadow: 0 0 6px rgba(74, 144, 226, 0.8);
         }
-        .controls select {
-            background: #222;
-            color: white;
-            border: none;
-            padding: 6px 12px;
-            font-size: 14px;
-            border-radius: 999px;
-            cursor: pointer;
-            appearance: none;
-            -webkit-appearance: none;
-            -moz-appearance: none;
-            transition: background 0.2s;
-            height: auto;
-        }
-
-            .controls select:hover {
-                background: #444;
-            }
-
-            .controls select:focus {
-                outline: none;
-                box-shadow: 0 0 6px rgba(74, 144, 226, 0.8);
-            }
-        .controls input[type="number"] {
-            background: #222;
-            color: white;
-            border: none;
-            padding: 6px 12px;
-            font-size: 14px;
-            border-radius: 999px;
-            width: 80px;
-            text-align: center;
-            appearance: none;
-            -webkit-appearance: none;
-            -moz-appearance: textfield;
-            transition: background 0.2s;
-            box-shadow: none;
-        }
-
-            .controls input[type="number"]:focus {
-                outline: none;
-                box-shadow: 0 0 6px rgba(74, 144, 226, 0.8);
-            }
-
-            .controls input[type="number"]::-webkit-outer-spin-button,
-            .controls input[type="number"]::-webkit-inner-spin-button {
-                -webkit-appearance: none;
-                margin: 0;
-            }
-        .font-input {
-            background: #222;
-            color: white;
-            border: none;
-            padding: 6px 12px;
-            font-size: 14px;
-            border-radius: 999px;
-            text-align: center;
-            appearance: none;
-            -webkit-appearance: none;
-            -moz-appearance: textfield;
-            transition: background 0.2s;
-            box-shadow: none;
-        }
-
-            .font-input:focus {
-                outline: none;
-                box-shadow: 0 0 6px rgba(74, 144, 226, 0.8);
-            }
-
     </style>
 </head>
 <body>
@@ -260,29 +671,6 @@
             <button onclick="setTranslator('azure')">Azure</button>
             <button onclick="setTranslator('google')">Google</button>
             <button onclick="retry()">🔁 Thử lại</button>
-
-            <div id="fontControlContainer">
-                <select id="fontSelect" onchange="handleFontSelectChange(this.value)">
-                    <option value="">Cỡ chữ</option>
-                    <option value="8">8</option>
-                    <option value="10" selected>10</option>
-                    <option value="12">12</option>
-                    <option value="14">14</option>
-                    <option value="16">16</option>
-                    <option value="custom">Tuỳ chỉnh</option>
-                </select>
-
-            </div>
-            <select id="zoomSelect" onchange="setZoom(this.value)">
-                <option value="0.5">50%</option>
-                <option value="0.75">75%</option>
-                <option value="1" selected>100%</option>
-                <option value="1.25">125%</option>
-                <option value="1.5">150%</option>
-            </select>
-
-
-
         </div>
     </div>
     <div id="log"></div>
@@ -464,19 +852,6 @@
         window.onload = () => {
             detectAndStart();
 
-            const savedFontSize = localStorage.getItem("fontSize");
-            if (savedFontSize) {
-                applyFontSize(savedFontSize);
-                document.getElementById("fontSelect").value = savedFontSize;
-            }
-
-            const savedZoom = localStorage.getItem('zoomScale') || '1';
-            setZoom(savedZoom);
-            document.getElementById('zoomSelect').value = savedZoom;
-
-
-
-
             setInterval(() => {
                 if (!isTranslating && speechBuffer.trim().length > 0) {
                     const now = Date.now();
@@ -524,643 +899,6 @@
             } else if (langCode === 'en-US') {
                 buttons[1].classList.add("active");
             }
-        }
-
-        function applyFontSize(size) {
-            const fontSize = parseInt(size);
-            if (!isNaN(fontSize) && fontSize >= 4 && fontSize <= 24) {
-                document.querySelectorAll('.text-block').forEach(el => {
-                    el.style.fontSize = fontSize + 'vh';
-                });
-                localStorage.setItem("fontSize", fontSize);
-            }
-        }
-
-        function handleFontSelectChange(value) {
-            if (value === "custom") {
-                const container = document.getElementById("fontControlContainer");
-
-                container.innerHTML = `
-            <input type="number" id="customFontInput"
-                   placeholder="vh"
-                   min="4" max="24"
-                   style="width: 70px;"
-                   class="font-input"
-                   onblur="resetToSelect()"
-                   oninput="applyCustomFontSize(this.value)">
-        `;
-                document.getElementById("customFontInput").focus();
-            } else {
-                applyFontSize(value);
-            }
-        }
-
-        function applyCustomFontSize(value) {
-            applyFontSize(value);
-        }
-
-        function resetToSelect() {
-            const savedFont = localStorage.getItem("fontSize") || 10;
-            document.getElementById("fontControlContainer").innerHTML = `
-        <select id="fontSelect" onchange="handleFontSelectChange(this.value)">
-            <option value="">Cỡ chữ</option>
-            <option value="8">8</option>
-            <option value="10">10</option>
-            <option value="12">12</option>
-            <option value="14">14</option>
-            <option value="16">16</option>
-            <option value="custom">Tuỳ chỉnh</option>
-        </select>
-    `;
-            document.getElementById("fontSelect").value = savedFont;
-        }
-
-
-        function setZoom(scale) {
-            const content = document.querySelector('.content');
-            content.style.transform = `scale(${scale})`;
-            content.style.transformOrigin = 'top center';
-
-            localStorage.setItem('zoomScale', scale);
-        }
-
-
-
-    </script>
-
-</body>
-</html>-->
-
-<!DOCTYPE html>
-<html lang="vi">
-<head>
-    <meta charset="UTF-8">
-    <title>Azure Speech AI Realtime Translate</title>
-    <style>
-        html, body {
-            margin: 0;
-            padding: 0;
-            background: #1a2732;
-            color: white;
-            font-family: sans-serif;
-            height: 120vh;
-            display: flex;
-            flex-direction: column;
-            overflow-y: auto;
-        }
-
-        .content {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            padding-bottom: 140px;
-        }
-
-        .controls {
-            display: flex;
-            gap: 10px;
-            padding: 10px;
-            justify-content: center;
-            background: #111;
-            border-top: 1px solid #333;
-        }
-
-        .section {
-            padding: 10px 30px;
-            display: flex;
-            flex-direction: column;
-        }
-
-            .section h3 {
-                font-size: 24px;
-                margin-bottom: 10px;
-            }
-
-        .text-block {
-            height: 90vh;
-            font-size: 10vh;
-            text-align: center;
-            overflow-y: auto;
-            white-space: pre-wrap;
-            border: 1px solid #444;
-            padding: 20px;
-            box-sizing: border-box;
-        }
-
-        #translatedText {
-            color: #e0e0e0;
-            font-style: italic;
-        }
-
-        button {
-            padding: 8px 16px;
-            font-size: 16px;
-            cursor: pointer;
-        }
-            button.active {
-                background: #2a3b4a;
-                color: white;
-                font-weight: bold;
-                box-shadow: 0 0 6px rgba(74, 144, 226, 0.8);
-            }
-
-
-        #originalSection {
-            display: none;
-        }
-
-        #log {
-            background: #000;
-            color: lime;
-            font-size: 14px;
-            padding: 10px;
-            max-height: 150px;
-            overflow-y: auto;
-            white-space: pre-wrap;
-        }
-
-        .settings-container {
-            position: fixed;
-            bottom: 10px;
-            right: 20px;
-            z-index: 999;
-            bottom: 15px;
-        }
-
-        .settings-toggle {
-            width: 56px;
-            height: 56px;
-            border-radius: 50%;
-            background: #333;
-            color: white;
-            font-size: 24px;
-            border: none;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 0 10px #000;
-            transition: background 0.3s;
-        }
-
-            .settings-toggle:hover {
-                background: #444;
-            }
-
-        .controls {
-            position: absolute;
-            right: 90px;
-            bottom: 0;
-            background: #111;
-            padding: 6px 10px;
-            border-radius: 20px; /* Mềm hơn khung */
-            border: 1px solid #444;
-            display: flex;
-            flex-direction: row;
-            gap: 8px;
-    
-            transform: translateX(20px);
-            transition: opacity 0.3s ease, transform 0.3s ease;
-        }
-            .controls.hidden {
-                display: none;
-            }
-
-
-            .controls button {
-                background: #222;
-                color: white;
-                border: none;
-                padding: 6px 18px; /* 📏 nhỏ lại nhưng dài hơn */
-                font-size: 14px;
-                cursor: pointer;
-                border-radius: 999px;
-                transition: background 0.2s, transform 0.2s;
-                min-height: auto;
-                min-width: auto;
-                white-space: nowrap;
-            }
-
-                .controls button:hover {
-                    background: #444;
-                    transform: scale(1.05);
-                }
-
-        .settings-toggle {
-            box-shadow: 0 4px 16px rgba(0,0,0,0.5);
-        }
-
-        .controls button.active {
-            background: #2a3b4a; /* xanh sáng hoặc bạn đổi màu khác cũng được */
-            color: #fff;
-            font-weight: bold;
-            box-shadow: 0 0 6px rgba(74, 144, 226, 0.8);
-        }
-
-        .controls button.active {
-            background: #2a3b4a;
-            color: #fff;
-            font-weight: bold;
-            box-shadow: 0 0 6px rgba(74, 144, 226, 0.8);
-        }
-
-        .controls select {
-            background: #222;
-            color: white;
-            border: none;
-            padding: 6px 12px;
-            font-size: 14px;
-            border-radius: 999px;
-            cursor: pointer;
-            appearance: none;
-            -webkit-appearance: none;
-            -moz-appearance: none;
-            transition: background 0.2s;
-            height: auto;
-        }
-
-            .controls select:hover {
-                background: #444;
-            }
-
-            .controls select:focus {
-                outline: none;
-                box-shadow: 0 0 6px rgba(74, 144, 226, 0.8);
-            }
-
-        .controls input[type="number"] {
-            background: #222;
-            color: white;
-            border: none;
-            padding: 6px 12px;
-            font-size: 14px;
-            border-radius: 999px;
-            width: 80px;
-            text-align: center;
-            appearance: none;
-            -webkit-appearance: none;
-            -moz-appearance: textfield;
-            transition: background 0.2s;
-            box-shadow: none;
-        }
-
-            .controls input[type="number"]:focus {
-                outline: none;
-                box-shadow: 0 0 6px rgba(74, 144, 226, 0.8);
-            }
-
-            .controls input[type="number"]::-webkit-outer-spin-button,
-            .controls input[type="number"]::-webkit-inner-spin-button {
-                -webkit-appearance: none;
-                margin: 0;
-            }
-        .lang-bar {
-            position: fixed; /* ✅ sửa từ absolute → fixed */
-            background: #1a2732;
-            border: 1px solid #444;
-            border-radius: 8px;
-            padding: 8px 12px;
-            display: flex;
-            gap: 10px;
-            z-index: 9999;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-        }
-
-            .lang-bar button.active {
-                background: #2a3b4a;
-                font-weight: bold;
-                box-shadow: 0 0 6px rgba(74, 144, 226, 0.8);
-            }
-
-            .lang-bar button {
-                background: #222;
-                color: white;
-                border: none;
-                padding: 6px 12px;
-                border-radius: 999px;
-                cursor: pointer;
-                font-size: 14px;
-            }
-
-                .lang-bar button:hover {
-                    background: #2a3b4a;
-                }
-
-        .hidden {
-            display: none;
-        }
-
-        #translatedText {
-            white-space: pre-wrap;
-            word-break: break-word;
-            font-size: 6vh;
-            line-height: 1.4;
-            transition: all 0.2s ease-in-out;
-        }
-
-
-    </style>
-    <script src="https://aka.ms/csspeech/jsbrowserpackageraw"></script>
-</head>
-<body>
-    <div class="content">
-        <div class="section" id="originalSection">
-            <h3>🗣️ Bạn nói:</h3>
-            <div id="originalText" class="text-block"></div>
-        </div>
-
-        <div class="section">
-            <div id="translatedText" class="text-block"></div>
-        </div>
-    </div>
-
-    <div class="settings-container">
-        <button class="settings-toggle" onclick="toggleSettings()">⚙️</button>
-        <div class="controls hidden" id="controlsMenu">
-            <button onclick="toggleLangBar('source', this)">🗣 Ngôn ngữ Nói</button>
-            <button onclick="toggleLangBar('target', this)">🌐 Dịch          </button>
-
-            <!--<button onclick="setTranslator('azure')">Azure</button>
-    <button onclick="setTranslator('google')">Google</button>-->
-            <button onclick="retry()">🔁 Thử lại</button>
-
-            <div id="fontControlContainer">
-                <select id="fontSelect" onchange="handleFontSelectChange(this.value)">
-                    <option value="">Cỡ chữ</option>
-                    <option value="8">8</option>
-                    <option value="10" selected>10</option>
-                    <option value="12">12</option>
-                    <option value="14">14</option>
-                    <option value="16">16</option>
-                    <option value="custom">Tuỳ chỉnh</option>
-                </select>
-
-            </div>
-            <select id="zoomSelect" onchange="setZoom(this.value)">
-                <option value="0.5">50%</option>
-                <option value="0.75">75%</option>
-                <option value="1" selected>100%</option>
-                <option value="1.25">125%</option>
-                <option value="1.5">150%</option>
-            </select>
-        </div>
-
-        <div id="langBar" class="lang-bar hidden"></div>
-    </div>
-    <script>
-
-        let sourceLang = 'vi-VN';
-        let targetLang = 'en';
-        let recognizer = null;
-        let latestFinalSentences = [];
-        let AZURE_SUBSCRIPTION_KEY = "";
-        let AZURE_REGION = "";
-
-        window.onload = () => {
-            highlightActiveLang();
-            waitForAzureConfig((key, region) => {
-                AZURE_SUBSCRIPTION_KEY = key;
-                AZURE_REGION = region;
-                startRecognizer(); // ✅ chỉ gọi ở đây
-            });
-        };
-
-
-        function startRecognizer() {
-            if (!window.SpeechSDK) return;
-
-            if (recognizer) {
-                recognizer.stopContinuousRecognitionAsync(() => {
-                    recognizer.close();
-                    recognizer = null;
-                    initRecognizer();
-                }, err => {
-                    console.error("❌ Lỗi khi stop:", err);
-                    recognizer = null;
-                    initRecognizer();
-                });
-            } else {
-                initRecognizer();
-            }
-        }
-
-        function waitForAzureConfig(callback) {
-            const maxTry = 100; // giới hạn tránh lặp vô hạn
-            let tryCount = 0;
-
-            const interval = setInterval(() => {
-                const env = window.ENV;
-                if (env?.AZURE_SUBSCRIPTION_KEY && env?.AZURE_REGION) {
-                    clearInterval(interval);
-                    callback(env.AZURE_SUBSCRIPTION_KEY, env.AZURE_REGION);
-                }
-
-                if (++tryCount > maxTry) {
-                    clearInterval(interval);
-                    console.error("❌ Không thể load ENV từ WPF");
-                }
-            }, 100);
-        }
-
-        function initRecognizer() {
-            const sdk = window.SpeechSDK;
-            const config = sdk.SpeechTranslationConfig.fromSubscription(AZURE_SUBSCRIPTION_KEY, AZURE_REGION);
-            config.speechRecognitionLanguage = sourceLang;
-            config.addTargetLanguage(targetLang);
-
-            const audioConfig = sdk.AudioConfig.fromDefaultMicrophoneInput();
-            recognizer = new sdk.TranslationRecognizer(config, audioConfig);
-
-            recognizer.recognizing = (s, e) => {
-                const partial = e.result.translations.get(targetLang);
-                if (partial) renderSentences(partial);
-            };
-
-            recognizer.recognized = (s, e) => {
-                if (e.result.reason === sdk.ResultReason.TranslatedSpeech) {
-                    const final = e.result.translations.get(targetLang);
-                    const sentences = splitIntoSentences(final);
-
-                    sentences.forEach(sentence => {
-                        const trimmed = sentence.trim();
-                        if (trimmed.length > 0 && latestFinalSentences.at(-1) !== trimmed) {
-                            latestFinalSentences.push(trimmed);
-                        }
-                    });
-
-                    renderSentences();
-                }
-            };
-
-            recognizer.canceled = (s, e) => console.error('[canceled]', e);
-            recognizer.sessionStopped = () => console.log('🛑 Session stopped.');
-
-            recognizer.startContinuousRecognitionAsync(
-                () => console.log('🚀 Đang nghe...'),
-                err => console.error('❌ Lỗi khởi động:', err)
-            );
-        }
-
-        function retry() {
-            startRecognizer();
-        }
-
-        function renderSentences(partial = "") {
-            const el = document.getElementById("translatedText");
-            el.innerHTML = "";
-
-            latestFinalSentences.forEach((sentence, index) => {
-                const color = index % 2 === 0 ? "#ffffff" : "#00ffd5";
-                el.innerHTML += `<div style="color: ${color}">${sentence}</div>`;
-            });
-
-            if (partial) {
-                el.innerHTML += `<div style="color: #888888; font-style: italic;">${partial}</div>`;
-            }
-
-            el.scrollTop = el.scrollHeight;
-        }
-
-        function splitIntoSentences(text) {
-            const matches = text.match(/[^.?!]+[.?!]/g);
-            return matches ? matches.map(s => s.trim()) : [text.trim()];
-        }   
-
-        function toggleSettings() {
-            const menu = document.getElementById("controlsMenu");
-            menu.classList.toggle("hidden");
-        }
-
-
-
-        function setSourceLanguage(lang) {
-            sourceLang = lang;
-            retry();
-            highlightActiveLang();
-        }
-
-        function setTargetLanguage(lang) {
-            targetLang = lang;
-            retry();
-            highlightActiveLang();
-        }
-
-        function highlightActiveLang() {
-            const buttons = document.querySelectorAll("#controlsMenu button");
-            buttons.forEach(btn => btn.classList.remove("active"));
-
-            buttons.forEach(btn => {
-                const onclickText = btn.getAttribute("onclick");
-                if (onclickText?.includes(`setSourceLanguage('${sourceLang}')`) ||
-                    onclickText?.includes(`setTargetLanguage('${targetLang}')`)) {
-                    btn.classList.add("active");
-                }
-            });
-        }
-
-        function applyFontSize(size) {
-            const fontSize = parseInt(size);
-            if (!isNaN(fontSize) && fontSize >= 4 && fontSize <= 24) {
-                document.querySelectorAll('.text-block').forEach(el => {
-                    el.style.fontSize = fontSize + 'vh';
-                });
-                localStorage.setItem("fontSize", fontSize);
-            }
-        }
-
-        function handleFontSelectChange(value) {
-            if (value === "custom") {
-                const container = document.getElementById("fontControlContainer");
-                container.innerHTML = `
-                    <input type="number" id="customFontInput"
-                           placeholder="vh"
-                           min="4" max="24"
-                           style="width: 70px;"
-                           class="font-input"
-                           onblur="resetToSelect()"
-                           oninput="applyCustomFontSize(this.value)">
-                `;
-                document.getElementById("customFontInput").focus();
-            } else {
-                applyFontSize(value);
-            }
-        }
-
-        function applyCustomFontSize(value) {
-            applyFontSize(value);
-        }
-
-        function resetToSelect() {
-            const savedFont = localStorage.getItem("fontSize") || 10;
-            document.getElementById("fontControlContainer").innerHTML = `
-                <select id="fontSelect" onchange="handleFontSelectChange(this.value)">
-                    <option value="">Cỡ chữ</option>
-                    <option value="8">8</option>
-                    <option value="10">10</option>
-                    <option value="12">12</option>
-                    <option value="14">14</option>
-                    <option value="16">16</option>
-                    <option value="custom">Tuỳ chỉnh</option>
-                </select>
-            `;
-            document.getElementById("fontSelect").value = savedFont;
-        }
-
-        function setZoom(scale) {
-            const content = document.querySelector('.content');
-            content.style.transform = `scale(${scale})`;
-            content.style.transformOrigin = 'top center';
-            localStorage.setItem('zoomScale', scale);
-        }
-
-        function toggleLangBar(type, triggerBtn) {
-            const bar = document.getElementById('langBar');
-
-            if (!bar.classList.contains('hidden')) {
-                bar.classList.add('hidden');
-                return;
-            }
-
-            const langs = type === 'source'
-                ? [
-                    { code: 'vi-VN', label: '🇻🇳 VN' },
-                    { code: 'en-US', label: '🇺🇸 US' },
-                    { code: 'zh-CN', label: '🇨🇳 CN' },
-                    { code: 'ja-JP', label: '🇯🇵 JA' }
-                ]
-                : [
-                    { code: 'en', label: '🇺🇸 EN' },
-                    { code: 'vi', label: '🇻🇳 VI' },
-                    { code: 'zh-Hans', label: '🇨🇳 CN' },
-                    { code: 'ja', label: '🇯🇵 JA' }
-                ];
-
-            const selected = type === 'source' ? sourceLang : targetLang;
-
-            bar.innerHTML = langs.map(lang => `
-                <button class="${lang.code === selected ? 'active' : ''}"
-                        onclick="${type === 'source'
-                    ? `setSourceLanguage('${lang.code}')`
-                    : `setTargetLanguage('${lang.code}')`
-                }; hideLangBar()">
-                    ${lang.label}
-                </button>
-            `).join('');
-
-            const rect = triggerBtn.getBoundingClientRect();
-            bar.style.top = `${rect.top - 48}px`;
-            bar.style.left = `${rect.left}px`;
-            bar.classList.remove('hidden');
-        }
-
-        function hideLangBar() {
-            document.getElementById('langBar').classList.add('hidden');
-        }
-
-        function log(msg) {
-            console.log(msg);
-            const el = document.getElementById("status");
-            if (el) el.textContent = msg;
         }
     </script>
 

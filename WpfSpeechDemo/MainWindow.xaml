@@ -9,7 +9,6 @@
         Background="Black">
 
     <Grid>
-        
         <wv2:WebView2 Name="WebView" />
     </Grid>
 </Window>
