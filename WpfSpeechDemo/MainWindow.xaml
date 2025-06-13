@@ -2,14 +2,31 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
+        xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         Title="Speech Translator"
-        WindowState="Maximized"
         WindowStyle="None"
-        ResizeMode="NoResize"
-        Background="Black">
+        AllowsTransparency="True"
+ Background="#01000000"
+
+
+    ResizeMode="CanResize"
+        Width="1280" Height="720">
+
+    <WindowChrome.WindowChrome>
+        <shell:WindowChrome 
+            CaptionHeight="0"
+            ResizeBorderThickness="10"
+            GlassFrameThickness="0"
+            CornerRadius="0"
+            UseAeroCaptionButtons="False" />
+    </WindowChrome.WindowChrome>
 
     <Grid>
-        
-        <wv2:WebView2 Name="WebView" />
+        <Border Background="Black"
+            Height="32" VerticalAlignment="Top"
+            MouseLeftButtonDown="DragWindow"/>
+        <wv2:WebView2 Name="WebView" Margin="0,32,0,0" />
     </Grid>
-</Window>
+
+
+</Window> 

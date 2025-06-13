@@ -596,241 +596,44 @@
 <head>
     <meta charset="UTF-8">
     <title>Azure Speech AI Realtime Translate</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+
     <style>
         html, body {
             margin: 0;
             padding: 0;
-            background: #1a2732;
+            background-color: transparent !important;
             color: white;
             font-family: sans-serif;
-            height: 120vh;
+            height: 100vh;
             display: flex;
             flex-direction: column;
             overflow-y: auto;
         }
-
-        .content {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            padding-bottom: 140px;
-        }
-
-        .controls {
-            display: flex;
-            gap: 10px;
-            padding: 10px;
-            justify-content: center;
-            background: #111;
-            border-top: 1px solid #333;
-        }
-
-        .section {
-            padding: 10px 30px;
-            display: flex;
-            flex-direction: column;
-        }
-
-            .section h3 {
-                font-size: 24px;
-                margin-bottom: 10px;
-            }
-
-        .text-block {
-            height: 90vh;
-            font-size: 10vh;
-            text-align: center;
-            overflow-y: auto;
-            white-space: pre-wrap;
-            border: 1px solid #444;
-            padding: 20px;
-            box-sizing: border-box;
-        }
-
-        #translatedText {
-            color: #e0e0e0;
-            font-style: italic;
-        }
-
-        button {
-            padding: 8px 16px;
-            font-size: 16px;
-            cursor: pointer;
-        }
-            button.active {
-                background: #2a3b4a;
-                color: white;
-                font-weight: bold;
-                box-shadow: 0 0 6px rgba(74, 144, 226, 0.8);
-            }
-
-
-        #originalSection {
-            display: none;
-        }
-
-        #log {
-            background: #000;
-            color: lime;
-            font-size: 14px;
-            padding: 10px;
-            max-height: 150px;
-            overflow-y: auto;
-            white-space: pre-wrap;
-        }
-
-        .settings-container {
+        /* GIỮ LẠI - Background overlay có opacity thay đổi */
+        #backgroundMainOverlay {
             position: fixed;
-            bottom: 10px;
-            right: 20px;
-            z-index: 999;
-            bottom: 15px;
-        }
-
-        .settings-toggle {
-            width: 56px;
-            height: 56px;
-            border-radius: 50%;
-            background: #333;
-            color: white;
-            font-size: 24px;
-            border: none;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 0 10px #000;
-            transition: background 0.3s;
-        }
-
-            .settings-toggle:hover {
-                background: #444;
-            }
-
-        .controls {
-            position: absolute;
-            right: 90px;
-            bottom: 0;
-            background: #111;
-            padding: 6px 10px;
-            border-radius: 20px; /* Mềm hơn khung */
-            border: 1px solid #444;
-            display: flex;
-            flex-direction: row;
-            gap: 8px;
-    
-            transform: translateX(20px);
-            transition: opacity 0.3s ease, transform 0.3s ease;
-        }
-            .controls.hidden {
-                display: none;
-            }
-
-
-            .controls button {
-                background: #222;
-                color: white;
-                border: none;
-                padding: 6px 18px; /* 📏 nhỏ lại nhưng dài hơn */
-                font-size: 14px;
-                cursor: pointer;
-                border-radius: 999px;
-                transition: background 0.2s, transform 0.2s;
-                min-height: auto;
-                min-width: auto;
-                white-space: nowrap;
-            }
-
-                .controls button:hover {
-                    background: #444;
-                    transform: scale(1.05);
-                }
-
-        .settings-toggle {
-            box-shadow: 0 4px 16px rgba(0,0,0,0.5);
-        }
-
-        .controls button.active {
-            background: #2a3b4a; /* xanh sáng hoặc bạn đổi màu khác cũng được */
-            color: #fff;
-            font-weight: bold;
-            box-shadow: 0 0 6px rgba(74, 144, 226, 0.8);
-        }
-
-        .controls button.active {
-            background: #2a3b4a;
-            color: #fff;
-            font-weight: bold;
-            box-shadow: 0 0 6px rgba(74, 144, 226, 0.8);
-        }
-
-        .controls select {
-            background: #222;
-            color: white;
-            border: none;
-            padding: 6px 12px;
-            font-size: 14px;
-            border-radius: 999px;
-            cursor: pointer;
-            appearance: none;
-            -webkit-appearance: none;
-            -moz-appearance: none;
+            inset: 0;
+            z-index: 0;
+            background: rgba(26, 39, 50, 1);
+            pointer-events: none;
             transition: background 0.2s;
-            height: auto;
         }
 
-            .controls select:hover {
-                background: #444;
-            }
-
-            .controls select:focus {
-                outline: none;
-                box-shadow: 0 0 6px rgba(74, 144, 226, 0.8);
-            }
-
-        .controls input[type="number"] {
-            background: #222;
-            color: white;
-            border: none;
-            padding: 6px 12px;
-            font-size: 14px;
-            border-radius: 999px;
-            width: 80px;
-            text-align: center;
-            appearance: none;
-            -webkit-appearance: none;
-            -moz-appearance: textfield;
-            transition: background 0.2s;
-            box-shadow: none;
-        }
-
-            .controls input[type="number"]:focus {
-                outline: none;
-                box-shadow: 0 0 6px rgba(74, 144, 226, 0.8);
-            }
-
-            .controls input[type="number"]::-webkit-outer-spin-button,
-            .controls input[type="number"]::-webkit-inner-spin-button {
-                -webkit-appearance: none;
-                margin: 0;
-            }
+        /* GIỮ LẠI - Khung ngôn ngữ hiển thị theo vị trí nút bấm */
         .lang-bar {
-            position: fixed; /* ✅ sửa từ absolute → fixed */
+            position: fixed;
             background: #1a2732;
             border: 1px solid #444;
             border-radius: 8px;
             padding: 8px 12px;
             display: flex;
             gap: 10px;
-            z-index: 9999;
+            z-index: 99999 !important;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
         }
-
-            .lang-bar button.active {
-                background: #2a3b4a;
-                font-weight: bold;
-                box-shadow: 0 0 6px rgba(74, 144, 226, 0.8);
-            }
 
             .lang-bar button {
                 background: #222;
@@ -842,15 +645,38 @@
                 font-size: 14px;
             }
 
+                .lang-bar button.active,
                 .lang-bar button:hover {
                     background: #2a3b4a;
+                    font-weight: bold;
+                    box-shadow: 0 0 6px rgba(74, 144, 226, 0.8);
                 }
-
-        .hidden {
-            display: none;
+        #langBar {
+            position: fixed;
+            background: #1a2732;
+            border: 1px solid #444;
+            border-radius: 8px;
+            padding: 8px 12px;
+            display: flex;
+            gap: 10px;
+            z-index: 999999 !important; /* tăng z-index lên cao hơn cả khối text */
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
         }
 
+
+        /* GIỮ LẠI - text-block để in văn bản lớn đẹp hơn */
+        .text-block {
+            max-height: 80vh;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            font-size: 6vh;
+        }
+
+
+
         #translatedText {
+            color: #e0e0e0;
+            font-style: normal;
             white-space: pre-wrap;
             word-break: break-word;
             font-size: 6vh;
@@ -858,55 +684,175 @@
             transition: all 0.2s ease-in-out;
         }
 
+        /* GIỮ LẠI - Slider custom không có sẵn trong Bootstrap */
+        .opacity-control {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+        }
+
+        #opacitySlider {
+            width: 100px;
+        }
+
+        /* Giữ để xử lý .hidden toggle */
+        .hidden {
+            display: none !important;
+        }
+        #controlsMenu {
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(10px);
+            transition: all 0.3s ease-in-out;
+        }
+
+            #controlsMenu.show {
+                opacity: 1;
+                visibility: visible;
+                transform: translateY(0);
+            }
+        .custom-controls-menu {
+            position: fixed;
+            bottom: 20px;
+            right: 80px;
+            z-index: 999;
+            background: #223343;
+            border: 1px solid #2a3b4a;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(10px);
+            transition: all 0.3s ease-in-out;
+        }
+
+            .custom-controls-menu.show {
+                opacity: 1;
+                visibility: visible;
+                transform: translateY(0);
+            }
+        .original-bg {
+            background: rgba(34, 51, 67, 0.6); /* hơi xanh tím than mờ */
+            border: 1px solid #2a3b4a;
+            border-radius: 12px;
+        }
+
+        .translated-bg {
+            background: transparent !important;
+            border: none !important;
+        }
+        .partial-text {
+            color: #888;
+            font-style: italic;
+            font-size: 5vh;
+            margin-top: 8px;
+            text-align: center;
+            white-space: pre-wrap;
+        }
+        .scroll-container {
+            max-height: 100vh;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+
+        #translatedText div {
+            margin-bottom: 20px;
+            font-size: 6vh;
+        }
+
+        #partialText div {
+            font-size: 5vh;
+        }
+        .partial-line {
+            font-style: italic;
+            color: #888;
+        }
+        .content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden; /* tránh scroll tràn */
+        }
+
 
     </style>
     <script src="https://aka.ms/csspeech/jsbrowserpackageraw"></script>
 </head>
 <body>
-    <div class="content">
-        <div class="section" id="originalSection">
-            <h3>🗣️ Bạn nói:</h3>
-            <div id="originalText" class="text-block"></div>
-        </div>
+    <div id="backgroundMainOverlay"></div>
 
-        <div class="section">
+    <div class="content">
+        <div id="translationContainer" class="scroll-container">
             <div id="translatedText" class="text-block"></div>
+            <div id="partialText" class="text-block"></div>
+
         </div>
     </div>
 
-    <div class="settings-container">
-        <button class="settings-toggle" onclick="toggleSettings()">⚙️</button>
-        <div class="controls hidden" id="controlsMenu">
-            <button onclick="toggleLangBar('source', this)">🗣 Ngôn ngữ Nói</button>
-            <button onclick="toggleLangBar('target', this)">🌐 Dịch          </button>
+    <div class="position-fixed bottom-0 end-0 p-3">
+        <!-- Thay nút cũ -->
+        <!-- Nút setting -->
 
-            <!--<button onclick="setTranslator('azure')">Azure</button>
-    <button onclick="setTranslator('google')">Google</button>-->
-            <button onclick="retry()">🔁 Thử lại</button>
 
-            <div id="fontControlContainer">
-                <select id="fontSelect" onchange="handleFontSelectChange(this.value)">
-                    <option value="">Cỡ chữ</option>
-                    <option value="8">8</option>
-                    <option value="10" selected>10</option>
-                    <option value="12">12</option>
-                    <option value="14">14</option>
-                    <option value="16">16</option>
-                    <option value="custom">Tuỳ chỉnh</option>
-                </select>
 
-            </div>
-            <select id="zoomSelect" onchange="setZoom(this.value)">
+        <button onclick="toggleSettings()"
+                style="position: fixed; bottom: 20px; right: 20px; width: 48px; height: 48px; border-radius: 50%; background: #333; color: white; z-index: 1000;">
+            ⚙️
+        </button>
+
+        <!-- KHUNG CONTROL -->
+        <div id="controlsMenu"
+             class="p-3 d-flex flex-wrap gap-2 rounded-pill shadow-lg custom-controls-menu">
+
+
+            <!-- ... các nút bên trong như cũ ... -->
+            <button id="toggleBtn" class="btn btn-dark" onclick="toggleRecording()">🔊 Bắt đầu</button>
+            <button class="btn btn-outline-light" onclick="toggleLangBar('source', this)">🗣 Ngôn ngữ Nói</button>
+            <button class="btn btn-outline-light" onclick="toggleLangBar('target', this)">🌐 Dịch</button>
+            <button class="btn btn-outline-warning" onclick="retry()">🔁 Thử lại</button>
+
+            <select class="form-select form-select-sm w-auto" id="fontSelect" onchange="handleFontSelectChange(this.value)">
+                <option value="">Cỡ chữ</option>
+                <option value="8">8</option>
+                <option value="10" selected>10</option>
+                <option value="12">12</option>
+                <option value="14">14</option>
+                <option value="16">16</option>
+                <option value="custom">Tuỳ chỉnh</option>
+            </select>
+
+            <!-- Ô nhập số: ban đầu ẩn -->
+            <input type="number" id="fontInput"
+                   placeholder="vh"
+                   min="4" max="24"
+                   style="width: 70px; margin-left: 8px; display: none;"
+                   oninput="applyCustomFontSize(this.value)">
+
+
+            <select class="form-select form-select-sm w-auto" id="zoomSelect" onchange="setZoom(this.value)">
                 <option value="0.5">50%</option>
                 <option value="0.75">75%</option>
                 <option value="1" selected>100%</option>
                 <option value="1.25">125%</option>
                 <option value="1.5">150%</option>
             </select>
+
+            <div class="opacity-control">
+                <label for="backgroundAlphaSlider">🌫️ Độ mờ nền:</label>
+                <input type="range" id="backgroundAlphaSlider" min="0" max="1" step="0.05" value="1" oninput="updateBackgroundOpacity(this.value)">
+                <span id="backgroundAlphaValue">100%</span>
+            </div>
+
+            <button class="btn btn-outline-primary" onclick="toggleTopmost()">📌On Top</button>
+            <button class="btn btn-outline-info" onclick="toggleFullscreen()">⛶</button>
+            <button class="btn btn-danger" onclick="exitApp()">❌ Thoát</button>
+
+
         </div>
 
-        <div id="langBar" class="lang-bar hidden"></div>
     </div>
+    <div id="langBar" class="lang-bar hidden"></div>
     <script>
 
         let sourceLang = 'vi-VN';
@@ -915,18 +861,67 @@
         let latestFinalSentences = [];
         let AZURE_SUBSCRIPTION_KEY = "";
         let AZURE_REGION = "";
+        let isRecording = false;
+        let lineIndex = 0;
 
-        window.onload = () => {
+        window.addEventListener("DOMContentLoaded", () => {
             highlightActiveLang();
+
             waitForAzureConfig((key, region) => {
                 AZURE_SUBSCRIPTION_KEY = key;
                 AZURE_REGION = region;
-                startRecognizer(); // ✅ chỉ gọi ở đây
+                startRecognizer();
             });
-        };
+
+            const bgOpacity = localStorage.getItem('bgOpacity') || "1";
+            const mainBgOpacity = localStorage.getItem('mainBgOpacity') || "1";
+            const zoomScale = localStorage.getItem('zoomScale') || "1";
+            const savedFontSize = localStorage.getItem("fontSize");
+
+            // Cỡ chữ
+            if (savedFontSize) {
+                applyFontSize(savedFontSize);
+
+                const select = document.getElementById("fontSelect");
+                const input = document.getElementById("fontInput");
+
+                const predefined = ["8", "10", "12", "14", "16"];
+                if (predefined.includes(savedFontSize)) {
+                    select.value = savedFontSize;
+                    if (input) input.style.display = "none";
+                } else {
+                    select.value = "custom";
+                    if (input) {
+                        input.style.display = "inline-block";
+                        input.value = savedFontSize;
+                    }
+                }
+            }
+
+            // Zoom
+            setZoom(zoomScale);
+
+            // Opacity
+            const slider = document.getElementById('opacitySlider');
+            const sliderLabel = document.getElementById('opacityValue');
+            const bgOverlay = document.getElementById('backgroundMainOverlay');
+
+            if (slider) slider.value = bgOpacity;
+            if (sliderLabel) sliderLabel.textContent = Math.round(bgOpacity * 100) + "%";
+            const content = document.querySelector('.content');
+            if (content) content.style.opacity = bgOpacity;
+            if (bgOverlay) bgOverlay.style.background = `rgba(26, 39, 50, ${mainBgOpacity})`;
+        });
+
+
 
 
         function startRecognizer() {
+            const btn = document.getElementById("toggleBtn");
+            btn.textContent = "⏹️ Ngưng";
+            btn.classList.add("active");
+            isRecording = true;
+
             if (!window.SpeechSDK) return;
 
             if (recognizer) {
@@ -943,6 +938,44 @@
                 initRecognizer();
             }
         }
+
+
+
+        function toggleRecording() {
+            const btn = document.getElementById("toggleBtn");
+
+            if (isRecording) {
+                stopRecognizer();
+                btn.textContent = "🔊 Bắt đầu";
+                btn.classList.remove("active");
+                isRecording = false;
+            } else {
+                startRecognizer();
+                btn.textContent = "⏹️ Ngưng";
+                btn.classList.add("active");
+                isRecording = true;
+            }
+        }
+
+        function stopRecognizer() {
+            const btn = document.getElementById("toggleBtn");
+            btn.textContent = "🔊 Bắt đầu";
+            btn.classList.remove("active");
+            isRecording = false;
+
+            if (recognizer) {
+                recognizer.stopContinuousRecognitionAsync(() => {
+                    recognizer.close();
+                    recognizer = null;
+                    console.log("🛑 Đã ngưng");
+                }, err => {
+                    console.error("❌ Lỗi khi dừng:", err);
+                    recognizer = null;
+                });
+            }
+        }
+
+
 
         function waitForAzureConfig(callback) {
             const maxTry = 100; // giới hạn tránh lặp vô hạn
@@ -973,24 +1006,66 @@
 
             recognizer.recognizing = (s, e) => {
                 const partial = e.result.translations.get(targetLang);
-                if (partial) renderSentences(partial);
+                if (partial) {
+                    const el = document.getElementById("translatedText");
+
+                    // Nếu đã có phần đoán trước → xóa
+                    const lastPartial = el.querySelector(".partial-line");
+                    if (lastPartial) el.removeChild(lastPartial);
+
+                    // ⭐ Lấy fontSize hiện tại
+                    const fontSize = parseInt(localStorage.getItem("fontSize") || 10);
+
+                    // Thêm mới phần đoán realtime
+                    const span = document.createElement("div");
+                    span.className = "partial-line";
+                    span.style.color = "#888888";
+                    span.style.fontStyle = "italic";
+                    span.style.textAlign = "center";
+                    span.style.fontSize = (fontSize - 2) + "vh"; // ⭐ Áp dụng font size
+                    span.textContent = partial;
+                    el.appendChild(span);
+
+                    // Scroll xuống
+                    el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+                }
             };
+
+
+
+
+
 
             recognizer.recognized = (s, e) => {
                 if (e.result.reason === sdk.ResultReason.TranslatedSpeech) {
                     const final = e.result.translations.get(targetLang);
-                    const sentences = splitIntoSentences(final);
+                    if (!final) return;
 
-                    sentences.forEach(sentence => {
-                        const trimmed = sentence.trim();
-                        if (trimmed.length > 0 && latestFinalSentences.at(-1) !== trimmed) {
-                            latestFinalSentences.push(trimmed);
-                        }
-                    });
+                    const el = document.getElementById("translatedText");
 
-                    renderSentences();
+                    // Xóa bản đoán cũ
+                    const lastPartial = el.querySelector(".partial-line");
+                    if (lastPartial) el.removeChild(lastPartial);
+
+                    const div = document.createElement("div");
+                    const fontSize = parseInt(localStorage.getItem("fontSize") || 10); // ⭐ Lấy font size đã lưu
+                    div.style.textAlign = "center";
+                    div.style.color = lineIndex % 2 === 0 ? "#ffffff" : "#00ffd5";
+                    div.style.marginBottom = "16px";
+                    div.style.fontSize = fontSize + "vh"; // ⭐ Gán font size
+                    div.textContent = final;
+                    el.appendChild(div);
+
+                    lineIndex++;
+
+                    el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
                 }
             };
+
+
+
+
+
 
             recognizer.canceled = (s, e) => console.error('[canceled]', e);
             recognizer.sessionStopped = () => console.log('🛑 Session stopped.');
@@ -1024,13 +1099,12 @@
         function splitIntoSentences(text) {
             const matches = text.match(/[^.?!]+[.?!]/g);
             return matches ? matches.map(s => s.trim()) : [text.trim()];
-        }   
+        }
 
         function toggleSettings() {
             const menu = document.getElementById("controlsMenu");
-            menu.classList.toggle("hidden");
+            menu.classList.toggle("show");
         }
-
 
 
         function setSourceLanguage(lang) {
@@ -1057,33 +1131,40 @@
                 }
             });
         }
-
         function applyFontSize(size) {
             const fontSize = parseInt(size);
             if (!isNaN(fontSize) && fontSize >= 4 && fontSize <= 24) {
-                document.querySelectorAll('.text-block').forEach(el => {
+                const allTranslatedLines = document.querySelectorAll('#translatedText > div, .partial-line');
+
+                allTranslatedLines.forEach(el => {
                     el.style.fontSize = fontSize + 'vh';
                 });
+
+                const input = document.getElementById("fontInput");
+                if (input) input.value = fontSize;
                 localStorage.setItem("fontSize", fontSize);
             }
         }
 
+
+
+
+
         function handleFontSelectChange(value) {
+            const input = document.getElementById("fontInput");
             if (value === "custom") {
-                const container = document.getElementById("fontControlContainer");
-                container.innerHTML = `
-                    <input type="number" id="customFontInput"
-                           placeholder="vh"
-                           min="4" max="24"
-                           style="width: 70px;"
-                           class="font-input"
-                           onblur="resetToSelect()"
-                           oninput="applyCustomFontSize(this.value)">
-                `;
-                document.getElementById("customFontInput").focus();
+                if (input) input.style.display = "inline-block";
+                input.focus();
             } else {
+                if (input) input.style.display = "none";
                 applyFontSize(value);
             }
+        }
+
+
+        function applyCustomFontSize(value) {
+            applyFontSize(value);
+            localStorage.setItem("fontSize", value);
         }
 
         function applyCustomFontSize(value) {
@@ -1093,18 +1174,44 @@
         function resetToSelect() {
             const savedFont = localStorage.getItem("fontSize") || 10;
             document.getElementById("fontControlContainer").innerHTML = `
-                <select id="fontSelect" onchange="handleFontSelectChange(this.value)">
-                    <option value="">Cỡ chữ</option>
-                    <option value="8">8</option>
-                    <option value="10">10</option>
-                    <option value="12">12</option>
-                    <option value="14">14</option>
-                    <option value="16">16</option>
-                    <option value="custom">Tuỳ chỉnh</option>
-                </select>
-            `;
+                                                                            <select id="fontSelect" onchange="handleFontSelectChange(this.value)">
+                                                                                <option value="">Cỡ chữ</option>
+                                                                                <option value="8">8</option>
+                                                                                <option value="10">10</option>
+                                                                                <option value="12">12</option>
+                                                                                <option value="14">14</option>
+                                                                                <option value="16">16</option>
+                                                                                <option value="custom">Tuỳ chỉnh</option>
+                                                                            </select>
+                                                                        `;
             document.getElementById("fontSelect").value = savedFont;
         }
+
+        function updateBackgroundOpacity(value) {
+            const percent = Math.round(value * 100);
+            document.getElementById("backgroundMainOverlay").style.background = `rgba(26, 39, 50, ${value})`;
+            document.getElementById("backgroundAlphaValue").textContent = percent + "%";
+            localStorage.setItem('mainBgOpacity', value);
+        }
+
+        // Khi load lại
+
+
+
+
+
+        // Áp dụng khi load lại
+        window.addEventListener('load', () => {
+            const saved = localStorage.getItem('bgOpacity');
+            const savedFontSize = localStorage.getItem("fontSize");
+            if (savedFontSize) applyFontSize(savedFontSize);
+
+            if (saved) {
+                document.querySelector('.content').style.opacity = saved;
+                document.getElementById('opacitySlider').value = saved;
+                document.getElementById('opacityValue').textContent = Math.round(saved * 100) + "%";
+            }
+        });
 
         function setZoom(scale) {
             const content = document.querySelector('.content');
@@ -1112,6 +1219,13 @@
             content.style.transformOrigin = 'top center';
             localStorage.setItem('zoomScale', scale);
         }
+
+        function toggleFullscreen() {
+            if (window.chrome?.webview) {
+                window.chrome.webview.postMessage({ action: "toggleFullscreen" });
+            }
+        }
+
 
         function toggleLangBar(type, triggerBtn) {
             const bar = document.getElementById('langBar');
@@ -1123,34 +1237,44 @@
 
             const langs = type === 'source'
                 ? [
-                    { code: 'vi-VN', label: '🇻🇳 VN' },
-                    { code: 'en-US', label: '🇺🇸 US' },
-                    { code: 'zh-CN', label: '🇨🇳 CN' },
-                    { code: 'ja-JP', label: '🇯🇵 JA' }
+                    { code: 'vi-VN', label: '🇻🇳 Tiếng Việt' },
+                    { code: 'en-US', label: '🇺🇸 English' },
+                    { code: 'zh-CN', label: '🇨🇳 中文' },
+                    { code: 'ja-JP', label: '🇯🇵 日本語' }
                 ]
                 : [
-                    { code: 'en', label: '🇺🇸 EN' },
-                    { code: 'vi', label: '🇻🇳 VI' },
-                    { code: 'zh-Hans', label: '🇨🇳 CN' },
-                    { code: 'ja', label: '🇯🇵 JA' }
+                    { code: 'en', label: '🇺🇸 English' },
+                    { code: 'vi', label: '🇻🇳 Tiếng Việt' },
+                    { code: 'zh-Hans', label: '🇨🇳 中文' },
+                    { code: 'ja', label: '🇯🇵 日本語' }
                 ];
 
             const selected = type === 'source' ? sourceLang : targetLang;
 
             bar.innerHTML = langs.map(lang => `
-                <button class="${lang.code === selected ? 'active' : ''}"
-                        onclick="${type === 'source'
+                                    <button class="${lang.code === selected ? 'active' : ''}"
+                                            onclick="${type === 'source'
                     ? `setSourceLanguage('${lang.code}')`
                     : `setTargetLanguage('${lang.code}')`
                 }; hideLangBar()">
-                    ${lang.label}
-                </button>
-            `).join('');
+                                        ${lang.label}
+                                    </button>
+                                `).join('');
 
             const rect = triggerBtn.getBoundingClientRect();
-            bar.style.top = `${rect.top - 48}px`;
+            const barHeight = 60; // hoặc đo động qua bar.offsetHeight sau khi hiển thị
+
+            // ✅ Hiển thị phía trên nút để tránh bị WebView2 che
+            bar.style.top = `${rect.top - barHeight}px`;
             bar.style.left = `${rect.left}px`;
             bar.classList.remove('hidden');
+        }
+
+
+        function toggleTopmost() {
+            if (window.chrome?.webview) {
+                window.chrome.webview.postMessage({ action: "toggleTopmost" });
+            }
         }
 
         function hideLangBar() {
@@ -1162,6 +1286,14 @@
             const el = document.getElementById("status");
             if (el) el.textContent = msg;
         }
+
+
+        function exitApp() {
+            if (window.chrome?.webview) {
+                window.chrome.webview.postMessage({ action: "exitApp" });
+            }
+        }
+
     </script>
 
 </body>
