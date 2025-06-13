@@ -667,14 +667,9 @@
         /* GIỮ LẠI - text-block để in văn bản lớn đẹp hơn */
         .text-block {
             max-height: 80vh;
-            font-size: 6vh;
-            text-align: center;
             overflow-y: auto;
             white-space: pre-wrap;
-            padding: 0; /* Không cần padding nếu muốn sát nền */
-            box-sizing: border-box;
-            background: transparent !important; /* ✅ Xóa màu nền */
-            border: none !important; /* ✅ Không viền */
+            font-size: 6vh;
         }
 
 
@@ -755,15 +750,11 @@
             white-space: pre-wrap;
         }
         .scroll-container {
-            flex: 1;
+            max-height: 100vh;
             overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-            justify-content: flex-start;
             padding: 20px;
-            gap: 16px;
-            scroll-behavior: smooth;
         }
+
 
         #translatedText div {
             margin-bottom: 20px;
@@ -773,7 +764,10 @@
         #partialText div {
             font-size: 5vh;
         }
-
+        .partial-line {
+            font-style: italic;
+            color: #888;
+        }
         .content {
             flex: 1;
             display: flex;
@@ -828,6 +822,14 @@
                 <option value="custom">Tuỳ chỉnh</option>
             </select>
 
+            <!-- Ô nhập số: ban đầu ẩn -->
+            <input type="number" id="fontInput"
+                   placeholder="vh"
+                   min="4" max="24"
+                   style="width: 70px; margin-left: 8px; display: none;"
+                   oninput="applyCustomFontSize(this.value)">
+
+
             <select class="form-select form-select-sm w-auto" id="zoomSelect" onchange="setZoom(this.value)">
                 <option value="0.5">50%</option>
                 <option value="0.75">75%</option>
@@ -862,7 +864,6 @@
         let isRecording = false;
         let lineIndex = 0;
 
-
         window.addEventListener("DOMContentLoaded", () => {
             highlightActiveLang();
 
@@ -874,20 +875,44 @@
 
             const bgOpacity = localStorage.getItem('bgOpacity') || "1";
             const mainBgOpacity = localStorage.getItem('mainBgOpacity') || "1";
+            const zoomScale = localStorage.getItem('zoomScale') || "1";
+            const savedFontSize = localStorage.getItem("fontSize");
 
+            // Cỡ chữ
+            if (savedFontSize) {
+                applyFontSize(savedFontSize);
+
+                const select = document.getElementById("fontSelect");
+                const input = document.getElementById("fontInput");
+
+                const predefined = ["8", "10", "12", "14", "16"];
+                if (predefined.includes(savedFontSize)) {
+                    select.value = savedFontSize;
+                    if (input) input.style.display = "none";
+                } else {
+                    select.value = "custom";
+                    if (input) {
+                        input.style.display = "inline-block";
+                        input.value = savedFontSize;
+                    }
+                }
+            }
+
+            // Zoom
+            setZoom(zoomScale);
+
+            // Opacity
             const slider = document.getElementById('opacitySlider');
             const sliderLabel = document.getElementById('opacityValue');
             const bgOverlay = document.getElementById('backgroundMainOverlay');
 
             if (slider) slider.value = bgOpacity;
             if (sliderLabel) sliderLabel.textContent = Math.round(bgOpacity * 100) + "%";
-            if (document.querySelector('.content')) document.querySelector('.content').style.opacity = bgOpacity;
-
+            const content = document.querySelector('.content');
+            if (content) content.style.opacity = bgOpacity;
             if (bgOverlay) bgOverlay.style.background = `rgba(26, 39, 50, ${mainBgOpacity})`;
-
-            const zoomScale = localStorage.getItem('zoomScale') || "1";
-            setZoom(zoomScale);
         });
+
 
 
 
@@ -982,17 +1007,31 @@
             recognizer.recognizing = (s, e) => {
                 const partial = e.result.translations.get(targetLang);
                 if (partial) {
-                    const el = document.getElementById("partialText");
-                    el.innerHTML = `<div style="
-                text-align: center;
-                color: #888888;
-                font-style: italic;
-            ">${partial}</div>`;
-                }
+                    const el = document.getElementById("translatedText");
 
-                const scrollContainer = document.getElementById("translationContainer");
-                scrollContainer.scrollTo({ top: scrollContainer.scrollHeight, behavior: 'smooth' });
+                    // Nếu đã có phần đoán trước → xóa
+                    const lastPartial = el.querySelector(".partial-line");
+                    if (lastPartial) el.removeChild(lastPartial);
+
+                    // ⭐ Lấy fontSize hiện tại
+                    const fontSize = parseInt(localStorage.getItem("fontSize") || 10);
+
+                    // Thêm mới phần đoán realtime
+                    const span = document.createElement("div");
+                    span.className = "partial-line";
+                    span.style.color = "#888888";
+                    span.style.fontStyle = "italic";
+                    span.style.textAlign = "center";
+                    span.style.fontSize = (fontSize - 2) + "vh"; // ⭐ Áp dụng font size
+                    span.textContent = partial;
+                    el.appendChild(span);
+
+                    // Scroll xuống
+                    el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+                }
             };
+
+
 
 
 
@@ -1002,26 +1041,28 @@
                     const final = e.result.translations.get(targetLang);
                     if (!final) return;
 
-                    const container = document.getElementById("translatedText");
+                    const el = document.getElementById("translatedText");
+
+                    // Xóa bản đoán cũ
+                    const lastPartial = el.querySelector(".partial-line");
+                    if (lastPartial) el.removeChild(lastPartial);
 
                     const div = document.createElement("div");
+                    const fontSize = parseInt(localStorage.getItem("fontSize") || 10); // ⭐ Lấy font size đã lưu
                     div.style.textAlign = "center";
                     div.style.color = lineIndex % 2 === 0 ? "#ffffff" : "#00ffd5";
                     div.style.marginBottom = "16px";
+                    div.style.fontSize = fontSize + "vh"; // ⭐ Gán font size
                     div.textContent = final;
+                    el.appendChild(div);
 
-                    container.appendChild(div);
                     lineIndex++;
 
-                    // Clear partial
-                    const partial = document.getElementById("partialText");
-                    if (partial) partial.innerHTML = "";
-
-                    // Scroll mượt xuống cuối
-                    const scrollContainer = document.getElementById("translationContainer");
-                    scrollContainer.scrollTo({ top: scrollContainer.scrollHeight, behavior: 'smooth' });
+                    el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
                 }
             };
+
+
 
 
 
@@ -1093,30 +1134,37 @@
         function applyFontSize(size) {
             const fontSize = parseInt(size);
             if (!isNaN(fontSize) && fontSize >= 4 && fontSize <= 24) {
-                document.querySelectorAll('.text-block').forEach(el => {
+                const allTranslatedLines = document.querySelectorAll('#translatedText > div, .partial-line');
+
+                allTranslatedLines.forEach(el => {
                     el.style.fontSize = fontSize + 'vh';
                 });
+
+                const input = document.getElementById("fontInput");
+                if (input) input.value = fontSize;
                 localStorage.setItem("fontSize", fontSize);
             }
         }
 
 
+
+
+
         function handleFontSelectChange(value) {
+            const input = document.getElementById("fontInput");
             if (value === "custom") {
-                const container = document.getElementById("fontControlContainer");
-                container.innerHTML = `
-                                                                                <input type="number" id="customFontInput"
-                                                                                       placeholder="vh"
-                                                                                       min="4" max="24"
-                                                                                       style="width: 70px;"
-                                                                                       class="font-input"
-                                                                                       onblur="resetToSelect()"
-                                                                                       oninput="applyCustomFontSize(this.value)">
-                                                                            `;
-                document.getElementById("customFontInput").focus();
+                if (input) input.style.display = "inline-block";
+                input.focus();
             } else {
+                if (input) input.style.display = "none";
                 applyFontSize(value);
             }
+        }
+
+
+        function applyCustomFontSize(value) {
+            applyFontSize(value);
+            localStorage.setItem("fontSize", value);
         }
 
         function applyCustomFontSize(value) {

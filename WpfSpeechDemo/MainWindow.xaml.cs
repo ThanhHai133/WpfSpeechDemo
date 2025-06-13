@@ -51,10 +51,14 @@ namespace WpfSpeechDemo
                         ToggleTopmost();
                         break;
                     case "exitApp":
-                        var result = MessageBox.Show("Bạn có chắc muốn thoát?", "Xác nhận", MessageBoxButton.YesNo, MessageBoxImage.Question);
-                        if (result == MessageBoxResult.Yes)
-                            Application.Current.Shutdown();
+                        Application.Current.Dispatcher.Invoke(() =>
+                        {
+                            var result = MessageBox.Show("Bạn có chắc muốn thoát?", "Xác nhận", MessageBoxButton.YesNo, MessageBoxImage.Question);
+                            if (result == MessageBoxResult.Yes)
+                                Application.Current.Shutdown();
+                        });
                         break;
+
 
 
                 }
