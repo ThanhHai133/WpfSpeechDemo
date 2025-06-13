@@ -774,15 +774,49 @@
             flex-direction: column;
             overflow: hidden; /* tránh scroll tràn */
         }
+        #loadingOverlay.fade-out {
+            opacity: 0;
+            transition: opacity 0.5s ease;
+            pointer-events: none;
+        }
+
+        .opacity-control {
+            align-items: center;
+            gap: 6px;
+        }
+
+        .floating-opacity-control {
+            position: fixed;
+            background-color: rgba(0, 0, 0, 0.75);
+            padding: 8px 12px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            z-index: 9999;
+            color: white;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+        }
 
 
     </style>
     <script src="https://aka.ms/csspeech/jsbrowserpackageraw"></script>
 </head>
 <body>
+
+    <div id="loadingOverlay" class="position-fixed top-0 start-0 w-100 h-100 d-flex flex-column justify-content-center align-items-center bg-dark bg-opacity-75" style="z-index: 9999;">
+        <div class="spinner-border text-info" style="width: 4rem; height: 4rem;" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <div class="mt-3 text-white fs-5">Đang khởi động...</div>
+    </div>
+
+
     <div id="backgroundMainOverlay"></div>
 
     <div class="content">
+
+
         <div id="translationContainer" class="scroll-container">
             <div id="translatedText" class="text-block"></div>
             <div id="partialText" class="text-block"></div>
@@ -838,13 +872,16 @@
                 <option value="1.5">150%</option>
             </select>
 
-            <div class="opacity-control">
-                <label for="backgroundAlphaSlider">🌫️ Độ mờ nền:</label>
-                <input type="range" id="backgroundAlphaSlider" min="0" max="1" step="0.05" value="1" oninput="updateBackgroundOpacity(this.value)">
-                <span id="backgroundAlphaValue">100%</span>
-            </div>
+            <!-- Nút bật -->
+            <button id="opacityBtn" class="btn btn-outline-secondary" onclick="toggleOpacityControl()">🌫️ Độ mờ nền</button>
 
-            <button class="btn btn-outline-primary" onclick="toggleTopmost()">📌On Top</button>
+            <!-- Panel nổi -->
+
+
+
+
+
+            <button class="btn btn-outline-primary" onclick="toggleTopmost()">📌Ghim</button>
             <button class="btn btn-outline-info" onclick="toggleFullscreen()">⛶</button>
             <button class="btn btn-danger" onclick="exitApp()">❌ Thoát</button>
 
@@ -852,6 +889,14 @@
         </div>
 
     </div>
+    <div id="floatingOpacity"
+         style="display: none; position: fixed; z-index: 9999; background: rgba(0,0,0,0.8); padding: 8px; border-radius: 8px;"
+         class="text-white">
+        <input type="range" id="backgroundAlphaSlider" min="0" max="1" step="0.05" value="1"
+               oninput="updateBackgroundOpacity(this.value)">
+        <span id="backgroundAlphaValue">100%</span>
+    </div>
+
     <div id="langBar" class="lang-bar hidden"></div>
     <script>
 
@@ -865,56 +910,66 @@
         let lineIndex = 0;
 
         window.addEventListener("DOMContentLoaded", () => {
-            highlightActiveLang();
+            const loading = document.getElementById("loadingOverlay");
 
-            waitForAzureConfig((key, region) => {
-                AZURE_SUBSCRIPTION_KEY = key;
-                AZURE_REGION = region;
-                startRecognizer();
-            });
+            // 1. Hiện loading ngay (nếu chưa hiện)
+            if (loading) loading.style.display = "flex";
 
-            const bgOpacity = localStorage.getItem('bgOpacity') || "1";
-            const mainBgOpacity = localStorage.getItem('mainBgOpacity') || "1";
-            const zoomScale = localStorage.getItem('zoomScale') || "1";
-            const savedFontSize = localStorage.getItem("fontSize");
+            setTimeout(() => {
+                // Ẩn loading (mượt hơn nếu dùng fade-out như đã nói)
+                if (loading) {
+                    loading.classList.add("fade-out");
+                    setTimeout(() => {
+                        loading.style.display = "none";
+                    }, 500);
+                }
 
-            // Cỡ chữ
-            if (savedFontSize) {
-                applyFontSize(savedFontSize);
+                // 3. Các xử lý chính vẫn chạy song song
+                highlightActiveLang();
 
-                const select = document.getElementById("fontSelect");
-                const input = document.getElementById("fontInput");
+                waitForAzureConfig((key, region) => {
+                    AZURE_SUBSCRIPTION_KEY = key;
+                    AZURE_REGION = region;
+                    startRecognizer();
+                });
 
-                const predefined = ["8", "10", "12", "14", "16"];
-                if (predefined.includes(savedFontSize)) {
-                    select.value = savedFontSize;
-                    if (input) input.style.display = "none";
-                } else {
-                    select.value = "custom";
-                    if (input) {
-                        input.style.display = "inline-block";
-                        input.value = savedFontSize;
+                const bgOpacity = localStorage.getItem('bgOpacity') || "1";
+                const mainBgOpacity = localStorage.getItem('mainBgOpacity') || "1";
+                const zoomScale = localStorage.getItem('zoomScale') || "1";
+                const savedFontSize = localStorage.getItem("fontSize");
+
+                if (savedFontSize) {
+                    applyFontSize(savedFontSize);
+
+                    const select = document.getElementById("fontSelect");
+                    const input = document.getElementById("fontInput");
+
+                    const predefined = ["8", "10", "12", "14", "16"];
+                    if (predefined.includes(savedFontSize)) {
+                        select.value = savedFontSize;
+                        if (input) input.style.display = "none";
+                    } else {
+                        select.value = "custom";
+                        if (input) {
+                            input.style.display = "inline-block";
+                            input.value = savedFontSize;
+                        }
                     }
                 }
-            }
 
-            // Zoom
-            setZoom(zoomScale);
+                setZoom(zoomScale);
 
-            // Opacity
-            const slider = document.getElementById('opacitySlider');
-            const sliderLabel = document.getElementById('opacityValue');
-            const bgOverlay = document.getElementById('backgroundMainOverlay');
+                const slider = document.getElementById('opacitySlider');
+                const sliderLabel = document.getElementById('opacityValue');
+                const bgOverlay = document.getElementById('backgroundMainOverlay');
 
-            if (slider) slider.value = bgOpacity;
-            if (sliderLabel) sliderLabel.textContent = Math.round(bgOpacity * 100) + "%";
-            const content = document.querySelector('.content');
-            if (content) content.style.opacity = bgOpacity;
-            if (bgOverlay) bgOverlay.style.background = `rgba(26, 39, 50, ${mainBgOpacity})`;
+                if (slider) slider.value = bgOpacity;
+                if (sliderLabel) sliderLabel.textContent = Math.round(bgOpacity * 100) + "%";
+                const content = document.querySelector('.content');
+                if (content) content.style.opacity = bgOpacity;
+                if (bgOverlay) bgOverlay.style.background = `rgba(26, 39, 50, ${mainBgOpacity})`;
+            }, 3000); // <-- Mọi thứ bắt đầu sau 3 giây
         });
-
-
-
 
         function startRecognizer() {
             const btn = document.getElementById("toggleBtn");
@@ -1077,9 +1132,33 @@
         }
 
         function retry() {
-            startRecognizer();
-        }
+            const loading = document.getElementById("loadingOverlay");
 
+            if (!loading) {
+                startRecognizer();
+                return;
+            }
+
+            // ✅ GỠ fade-out nếu có
+            loading.classList.remove("fade-out");
+
+            // ✅ Hiện overlay lại
+            loading.style.display = "flex";
+
+            // ✅ Bắt đầu vòng chờ
+            requestAnimationFrame(() => {
+                setTimeout(() => {
+                    // ✅ Sau 3 giây mới khởi động lại
+                    startRecognizer();
+
+                    // ✅ Thêm lại fade-out nếu muốn hiệu ứng ẩn mượt
+                    loading.classList.add("fade-out");
+                    setTimeout(() => {
+                        loading.style.display = "none";
+                    }, 500);
+                }, 5000);
+            });
+        }
         function renderSentences(partial = "") {
             const el = document.getElementById("translatedText");
             el.innerHTML = "";
@@ -1174,16 +1253,16 @@
         function resetToSelect() {
             const savedFont = localStorage.getItem("fontSize") || 10;
             document.getElementById("fontControlContainer").innerHTML = `
-                                                                            <select id="fontSelect" onchange="handleFontSelectChange(this.value)">
-                                                                                <option value="">Cỡ chữ</option>
-                                                                                <option value="8">8</option>
-                                                                                <option value="10">10</option>
-                                                                                <option value="12">12</option>
-                                                                                <option value="14">14</option>
-                                                                                <option value="16">16</option>
-                                                                                <option value="custom">Tuỳ chỉnh</option>
-                                                                            </select>
-                                                                        `;
+                                    <select id="fontSelect" onchange="handleFontSelectChange(this.value)">
+                                        <option value="">Cỡ chữ</option>
+                                        <option value="8">8</option>
+                                        <option value="10">10</option>
+                                        <option value="12">12</option>
+                                        <option value="14">14</option>
+                                        <option value="16">16</option>
+                                        <option value="custom">Tuỳ chỉnh</option>
+                                    </select>
+                                `;
             document.getElementById("fontSelect").value = savedFont;
         }
 
@@ -1252,14 +1331,14 @@
             const selected = type === 'source' ? sourceLang : targetLang;
 
             bar.innerHTML = langs.map(lang => `
-                                    <button class="${lang.code === selected ? 'active' : ''}"
-                                            onclick="${type === 'source'
+                                                <button class="${lang.code === selected ? 'active' : ''}"
+                                                        onclick="${type === 'source'
                     ? `setSourceLanguage('${lang.code}')`
                     : `setTargetLanguage('${lang.code}')`
                 }; hideLangBar()">
-                                        ${lang.label}
-                                    </button>
-                                `).join('');
+                                                    ${lang.label}
+                                                </button>
+                                            `).join('');
 
             const rect = triggerBtn.getBoundingClientRect();
             const barHeight = 60; // hoặc đo động qua bar.offsetHeight sau khi hiển thị
@@ -1281,6 +1360,22 @@
             document.getElementById('langBar').classList.add('hidden');
         }
 
+
+        function toggleOpacityControl() {
+            const floating = document.getElementById("floatingOpacity");
+            const button = document.getElementById("opacityBtn");
+
+            if (!floating || !button) return;
+
+            const isVisible = floating.style.display === "flex";
+            floating.style.display = isVisible ? "none" : "flex";
+
+            if (!isVisible) {
+                const rect = button.getBoundingClientRect();
+                floating.style.left = rect.left + "px";
+                floating.style.top = (rect.top - floating.offsetHeight - 10) + "px";
+            }
+        }
         function log(msg) {
             console.log(msg);
             const el = document.getElementById("status");
