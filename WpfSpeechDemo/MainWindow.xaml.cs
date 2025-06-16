@@ -58,7 +58,22 @@ namespace WpfSpeechDemo
                                 Application.Current.Shutdown();
                         });
                         break;
-
+                    case "log":
+                        if (data.TryGetValue("data", out var logContent))
+                        {
+                            try
+                            {
+                                var logPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "logs.txt");
+                                var logLine = $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} - {logContent}{Environment.NewLine}";
+                                File.AppendAllText(logPath, logLine);
+                            }
+                            catch (Exception ex)
+                            {
+                                // Ghi lỗi log luôn nếu cần
+                                File.AppendAllText("logs.txt", $"[ERROR] {ex.Message}{Environment.NewLine}");
+                            }
+                        }
+                        break;
 
 
                 }

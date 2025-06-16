@@ -1000,6 +1000,8 @@
             btn.classList.add("active");
             isRecording = true;
 
+            logToFile("🎙️ Bắt đầu nhận giọng nói");
+
             if (!window.SpeechSDK) return;
 
             if (recognizer) {
@@ -1016,8 +1018,6 @@
                 initRecognizer();
             }
         }
-
-
 
         function toggleRecording() {
             const btn = document.getElementById("toggleBtn");
@@ -1041,6 +1041,8 @@
             btn.classList.remove("active");
             isRecording = false;
 
+            logToFile("🛑 Đã dừng nhận giọng nói");
+
             if (recognizer) {
                 recognizer.stopContinuousRecognitionAsync(() => {
                     recognizer.close();
@@ -1052,8 +1054,6 @@
                 });
             }
         }
-
-
 
         function waitForAzureConfig(callback) {
             const maxTry = 100; // giới hạn tránh lặp vô hạn
@@ -1117,6 +1117,7 @@
 
                     const el = document.getElementById("translatedText");
 
+                    logToFile(`✅ Kết quả dịch: ${final}`);
                     // Xóa bản đoán cũ
                     const lastPartial = el.querySelector(".partial-line");
                     if (lastPartial) el.removeChild(lastPartial);
@@ -1130,13 +1131,24 @@
                     div.textContent = final;
                     el.appendChild(div);
 
+               
+
                     lineIndex++;
 
                     el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
                 }
             };
 
-            recognizer.canceled = (s, e) => console.error('[canceled]', e);
+            recognizer.canceled = (s, e) => {
+                console.error('[canceled]', e);
+
+                // Ghi log ra file
+                logToFile(`❌ Canceled: ${e.errorDetails || 'Không rõ nguyên nhân'}`);
+
+                // Tự động retry
+                retry();
+            };
+
             recognizer.sessionStopped = () => console.log('🛑 Session stopped.');
 
             recognizer.startContinuousRecognitionAsync(
@@ -1167,6 +1179,8 @@
             // ✅ Hiện overlay lại
             loading.style.display = "flex";
 
+            logToFile("🔁 Đang retry nhận giọng nói");
+
             // ✅ Bắt đầu vòng chờ
             requestAnimationFrame(() => {
                 setTimeout(() => {
@@ -1181,7 +1195,6 @@
                 }, 1000);
             });
         }
-
 
         function renderSentences(partial = "") {
             const el = document.getElementById("translatedText");
@@ -1209,17 +1222,20 @@
             menu.classList.toggle("show");
         }
 
-
         function setSourceLanguage(lang) {
             sourceLang = lang;
             retry();
             highlightActiveLang();
+            logToFile(`🗣️ Đổi ngôn ngữ nói: ${lang}`);
+
         }
 
         function setTargetLanguage(lang) {
             targetLang = lang;
             retry();
             highlightActiveLang();
+            logToFile(`🌐 Đổi ngôn ngữ dịch: ${lang}`);
+
         }
 
         function highlightActiveLang() {
@@ -1234,6 +1250,7 @@
                 }
             });
         }
+
         function applyFontSize(size) {
             const fontSize = parseInt(size);
             if (!isNaN(fontSize) && fontSize >= 4 && fontSize <= 24) {
@@ -1249,10 +1266,6 @@
             }
         }
 
-
-
-
-
         function handleFontSelectChange(value) {
             const input = document.getElementById("fontInput");
             if (value === "custom") {
@@ -1263,7 +1276,6 @@
                 applyFontSize(value);
             }
         }
-
 
         function applyCustomFontSize(value) {
             applyFontSize(value);
@@ -1297,13 +1309,6 @@
             localStorage.setItem('mainBgOpacity', value);
         }
 
-        // Khi load lại
-
-
-
-
-
-        // Áp dụng khi load lại
         window.addEventListener('load', () => {
             const saved = localStorage.getItem('bgOpacity');
             const savedFontSize = localStorage.getItem("fontSize");
@@ -1328,7 +1333,6 @@
                 window.chrome.webview.postMessage({ action: "toggleFullscreen" });
             }
         }
-
 
         function toggleLangBar(type, triggerBtn) {
             const bar = document.getElementById('langBar');
@@ -1373,7 +1377,6 @@
             bar.classList.remove('hidden');
         }
 
-
         function toggleTopmost() {
             if (window.chrome?.webview) {
                 window.chrome.webview.postMessage({ action: "toggleTopmost" });
@@ -1383,7 +1386,6 @@
         function hideLangBar() {
             document.getElementById('langBar').classList.add('hidden');
         }
-
 
         function toggleOpacityControl() {
             const floating = document.getElementById("floatingOpacity");
@@ -1399,7 +1401,8 @@
                 floating.style.left = rect.left + "px";
                 floating.style.top = (rect.top - floating.offsetHeight - 10) + "px";
             }
-        }
+        }   
+
         function toggleColorPicker() {
             const picker = document.getElementById("colorPickerContainer");
             if (!picker) return;
@@ -1407,9 +1410,6 @@
             const isVisible = picker.style.display === "block";
             picker.style.display = isVisible ? "none" : "block";
         }
-
-
-
 
         function applyBackgroundColor(hexColor) {
             const opacity = localStorage.getItem("mainBgOpacity") || "1";
@@ -1428,15 +1428,20 @@
             return `rgba(${r}, ${g}, ${b}, ${opacity})`;
         }
 
-
-
-
         function log(msg) {
             console.log(msg);
             const el = document.getElementById("status");
             if (el) el.textContent = msg;
         }
 
+        function logToFile(msg) {
+            if (window.chrome?.webview) {
+                window.chrome.webview.postMessage({
+                    action: "log",
+                    data: msg
+                });
+            }
+        }
 
         function exitApp() {
             if (window.chrome?.webview) {
