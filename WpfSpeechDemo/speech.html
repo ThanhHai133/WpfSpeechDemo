@@ -727,7 +727,6 @@
             border-radius: 12px;
         }
 
-        }
 
         .original-bg {
             background: rgba(34, 51, 67, 0.6); /* hơi xanh tím than mờ */
@@ -984,6 +983,9 @@
         let AZURE_REGION = "";
         let isRecording = false;
         let lineIndex = 0;
+        let defaultTextColor1 = "#ffffff";
+        let defaultTextColor2 = "#00ffd5";
+        let defaultTextColorTrans = "#888888"
 
         window.addEventListener("DOMContentLoaded", () => {
             const loading = document.getElementById("loadingOverlay");
@@ -1154,8 +1156,7 @@
                     const span = document.createElement("div");
                     span.className = "partial-line";
 
-                    const textColorTrans = localStorage.getItem("textColorTrans") || "#888888";
-                    span.style.color = textColorTrans;
+                    span.style.color = defaultTextColorTrans;
 
                     span.style.fontStyle = "italic";
                     span.style.textAlign = "center";
@@ -1176,7 +1177,6 @@
 
                     const el = document.getElementById("translatedText");
 
-                    logToFile(`✅ Kết quả dịch: ${final}`);
                     // Xóa bản đoán cũ
                     const lastPartial = el.querySelector(".partial-line");
                     if (lastPartial) el.removeChild(lastPartial);
@@ -1185,10 +1185,7 @@
                     const fontSize = parseInt(localStorage.getItem("fontSize") || 10); // ⭐ Lấy font size đã lưu
                     div.style.textAlign = "center";
 
-                    const textColor1 = localStorage.getItem("textColor1") || "#ffffff";
-                    const textColor2 = localStorage.getItem("textColor2") || "#00ffd5";
-
-                    div.style.color = lineIndex % 2 === 0 ? textColor1 : textColor2;
+                    div.style.color = lineIndex % 2 === 0 ? defaultTextColor1 : defaultTextColor2;
 
                     div.style.marginBottom = "16px";
                     div.style.fontSize = fontSize + "vh"; // ⭐ Gán font size
@@ -1516,28 +1513,26 @@
         function applyTextColor(color, type) {
             if (type === 1) {
                 localStorage.setItem("textColor1", color);
+                defaultTextColor1 = color;
             } else if (type === 2) {
                 localStorage.setItem("textColor2", color);
+                defaultTextColor2 = color;
             } else if (type === 'trans') {
                 localStorage.setItem("textColorTrans", color);
+                defaultTextColorTrans = color;
             }
 
             updateTextColors();
         }
-
         function updateTextColors() {
-            const textColor1 = localStorage.getItem("textColor1") || "#ffffff"; // Mặc định: trắng
-            const textColor2 = localStorage.getItem("textColor2") || "#00ffd5"; // Mặc định: xanh ngọc
-            const textColorTrans = localStorage.getItem("textColorTrans") || "#888888"; // Mặc định: xám partial
-
             const lines = document.querySelectorAll('#translatedText > div');
             lines.forEach((el, idx) => {
-                el.style.color = idx % 2 === 0 ? textColor1 : textColor2;
+                el.style.color = idx % 2 === 0 ? defaultTextColor1 : defaultTextColor2;
             });
 
             const partials = document.querySelectorAll('.partial-line');
             partials.forEach(el => {
-                el.style.color = textColorTrans;
+                el.style.color = defaultTextColorTrans;
             });
         }
 
