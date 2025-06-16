@@ -797,6 +797,21 @@
             color: white;
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
         }
+        #colorPickerContainer {
+            position: absolute;
+            bottom: 100%;
+            left: 0;
+            margin-bottom: 8px;
+            z-index: 999999;
+            padding: 10px 12px;
+            border-radius: 12px;
+            background: linear-gradient(145deg, #1e293b, #334155); /* nền gradient than xanh */
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5); /* đổ bóng mềm */
+            border: 1px solid rgba(255, 255, 255, 0.1); /* viền nhẹ */
+            display: none;
+        }
+
+
 
 
     </style>
@@ -823,7 +838,6 @@
 
         </div>
     </div>
-
     <div class="position-fixed bottom-0 end-0 p-3">
         <!-- Thay nút cũ -->
         <!-- Nút setting -->
@@ -845,6 +859,21 @@
             <button class="btn btn-outline-light" onclick="toggleLangBar('source', this)">🗣 Ngôn ngữ Nói</button>
             <button class="btn btn-outline-light" onclick="toggleLangBar('target', this)">🌐 Dịch</button>
             <button class="btn btn-outline-warning" onclick="retry()">🔁 Thử lại</button>
+
+
+            <!-- Nút mở bảng màu -->
+            <div class="color-picker-wrapper" style="position: relative; display: inline-block;">
+                <button class="btn btn-outline-light" onclick="toggleColorPicker()">🎨 Màu nền</button>
+
+                <div id="colorPickerContainer"
+                     style="display: none; position: absolute; bottom: 100%; left: 0; margin-bottom: 8px; z-index: 999999; background: rgba(0,0,0,0.85); padding: 8px; border-radius: 8px;"
+                     class="text-white">
+                    <input type="color" id="bgColorPicker" onchange="applyBackgroundColor(this.value)">
+                </div>
+            </div>
+
+
+
 
             <select class="form-select form-select-sm w-auto" id="fontSelect" onchange="handleFontSelectChange(this.value)">
                 <option value="">Cỡ chữ</option>
@@ -872,13 +901,7 @@
                 <option value="1.5">150%</option>
             </select>
 
-            <!-- Nút bật -->
             <button id="opacityBtn" class="btn btn-outline-secondary" onclick="toggleOpacityControl()">🌫️ Độ mờ nền</button>
-
-            <!-- Panel nổi -->
-
-
-
 
 
             <button class="btn btn-outline-primary" onclick="toggleTopmost()">📌Ghim</button>
@@ -961,13 +984,13 @@
 
                 const slider = document.getElementById('opacitySlider');
                 const sliderLabel = document.getElementById('opacityValue');
-                const bgOverlay = document.getElementById('backgroundMainOverlay');
+                const bgColor = localStorage.getItem("backgroundColor") || "#1a2732";
 
                 if (slider) slider.value = bgOpacity;
                 if (sliderLabel) sliderLabel.textContent = Math.round(bgOpacity * 100) + "%";
                 const content = document.querySelector('.content');
                 if (content) content.style.opacity = bgOpacity;
-                if (bgOverlay) bgOverlay.style.background = `rgba(26, 39, 50, ${mainBgOpacity})`;
+                if (bgOverlay) bgOverlay.style.background = hexToRgba(bgColor, mainBgOpacity);
             }, 3000); // <-- Mọi thứ bắt đầu sau 3 giây
         });
 
@@ -1087,10 +1110,6 @@
             };
 
 
-
-
-
-
             recognizer.recognized = (s, e) => {
                 if (e.result.reason === sdk.ResultReason.TranslatedSpeech) {
                     const final = e.result.translations.get(targetLang);
@@ -1117,11 +1136,6 @@
                 }
             };
 
-
-
-
-
-
             recognizer.canceled = (s, e) => console.error('[canceled]', e);
             recognizer.sessionStopped = () => console.log('🛑 Session stopped.');
 
@@ -1133,6 +1147,14 @@
 
         function retry() {
             const loading = document.getElementById("loadingOverlay");
+            const bgOverlay = document.getElementById("backgroundMainOverlay");
+
+            // 🔁 Khôi phục màu nền mặc định
+            const defaultColor = "#1a2732";
+            const defaultOpacity = localStorage.getItem('mainBgOpacity') || "1";
+            if (bgOverlay) {
+                bgOverlay.style.background = hexToRgba(defaultColor, defaultOpacity);
+            }
 
             if (!loading) {
                 startRecognizer();
@@ -1156,9 +1178,11 @@
                     setTimeout(() => {
                         loading.style.display = "none";
                     }, 500);
-                }, 5000);
+                }, 1000);
             });
         }
+
+
         function renderSentences(partial = "") {
             const el = document.getElementById("translatedText");
             el.innerHTML = "";
@@ -1376,6 +1400,37 @@
                 floating.style.top = (rect.top - floating.offsetHeight - 10) + "px";
             }
         }
+        function toggleColorPicker() {
+            const picker = document.getElementById("colorPickerContainer");
+            if (!picker) return;
+
+            const isVisible = picker.style.display === "block";
+            picker.style.display = isVisible ? "none" : "block";
+        }
+
+
+
+
+        function applyBackgroundColor(hexColor) {
+            const opacity = localStorage.getItem("mainBgOpacity") || "1";
+            const rgba = hexToRgba(hexColor, opacity);
+            const bg = document.getElementById("backgroundMainOverlay");
+            if (bg) bg.style.background = rgba;
+
+            localStorage.setItem("backgroundColor", hexColor);
+        }
+
+        function hexToRgba(hex, opacity) {
+            const bigint = parseInt(hex.replace('#', ''), 16);
+            const r = (bigint >> 16) & 255;
+            const g = (bigint >> 8) & 255;
+            const b = bigint & 255;
+            return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+        }
+
+
+
+
         function log(msg) {
             console.log(msg);
             const el = document.getElementById("status");
