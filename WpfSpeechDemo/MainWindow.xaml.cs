@@ -4,6 +4,7 @@ using System.IO;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Media;
 using System.Windows.Shell;
 
 namespace WpfSpeechDemo
@@ -114,7 +115,12 @@ namespace WpfSpeechDemo
         private async void WebView_NavigationCompleted(object? sender, CoreWebView2NavigationCompletedEventArgs e)
         {
             await WebView.EnsureCoreWebView2Async();
-            WebView.CoreWebView2.OpenDevToolsWindow();
+            #if DEBUG
+                        WebView.CoreWebView2.OpenDevToolsWindow();
+#endif
+            WebView.DefaultBackgroundColor = System.Drawing.Color.Transparent;
+
+                
 
             WebView.CoreWebView2.PermissionRequested += (s, args) =>
             {

@@ -6,7 +6,7 @@
         Title="Speech Translator"
         WindowStyle="None"
         AllowsTransparency="True"
- Background="#01000000"
+   Background="#01000000"
 
 
     ResizeMode="CanResize"
