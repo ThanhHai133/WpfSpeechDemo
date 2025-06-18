@@ -1,11 +1,8 @@
 ﻿using Microsoft.Web.WebView2.Core;
-using System;
 using System.IO;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Shell;
 
 namespace WpfSpeechDemo
 {
