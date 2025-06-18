@@ -12,7 +12,7 @@ namespace WpfSpeechDemo
     public partial class MainWindow : Window
     {
         private bool isFullscreen = true;
-        private bool isTopmost = true;
+        private bool isTopmost = false;
         public MainWindow()
         {
             InitializeComponent();
