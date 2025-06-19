@@ -1,17 +1,15 @@
 ﻿using Microsoft.Web.WebView2.Core;
-using System;
 using System.IO;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Input;
-using System.Windows.Shell;
 
 namespace WpfSpeechDemo
 {
     public partial class MainWindow : Window
     {
         private bool isFullscreen = true;
-        private bool isTopmost = true;
+        private bool isTopmost = false;
         public MainWindow()
         {
             InitializeComponent();
@@ -114,7 +112,12 @@ namespace WpfSpeechDemo
         private async void WebView_NavigationCompleted(object? sender, CoreWebView2NavigationCompletedEventArgs e)
         {
             await WebView.EnsureCoreWebView2Async();
-            WebView.CoreWebView2.OpenDevToolsWindow();
+            #if DEBUG
+                        WebView.CoreWebView2.OpenDevToolsWindow();
+#endif
+            WebView.DefaultBackgroundColor = System.Drawing.Color.Transparent;
+
+                
 
             WebView.CoreWebView2.PermissionRequested += (s, args) =>
             {
