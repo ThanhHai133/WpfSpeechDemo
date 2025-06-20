@@ -32,6 +32,12 @@ namespace WpfSpeechDemo
             var htmlUri = new Uri("file:///" + htmlPath.Replace("\\", "/"));
             WebView.Source = htmlUri;
 
+            WebView.PreviewMouseDown += (_, _) =>
+            {
+                this.Focus();
+            };
+
+
         }
         private void CoreWebView2_WebMessageReceived(object? sender, CoreWebView2WebMessageReceivedEventArgs e)
         {
@@ -75,6 +81,9 @@ namespace WpfSpeechDemo
                             }
                         }
                         break;
+                    case "switchLangByJs":
+                        ToggleLanguage_Click(null, null);
+                        break;
 
 
                 }
@@ -112,12 +121,12 @@ namespace WpfSpeechDemo
         private async void WebView_NavigationCompleted(object? sender, CoreWebView2NavigationCompletedEventArgs e)
         {
             await WebView.EnsureCoreWebView2Async();
-            #if DEBUG
-                        WebView.CoreWebView2.OpenDevToolsWindow();
+#if DEBUG
+            WebView.CoreWebView2.OpenDevToolsWindow();
 #endif
             WebView.DefaultBackgroundColor = System.Drawing.Color.Transparent;
 
-                
+
 
             WebView.CoreWebView2.PermissionRequested += (s, args) =>
             {
@@ -171,6 +180,43 @@ namespace WpfSpeechDemo
         {
             if (e.LeftButton == MouseButtonState.Pressed)
                 this.DragMove();
+        }
+
+        private bool isEnglishToVietnamese = true;
+
+        private async void ToggleLanguage_Click(object sender, RoutedEventArgs e)
+        {
+            if (WebView.CoreWebView2 != null)
+            {
+                await WebView.CoreWebView2.ExecuteScriptAsync("console.log('✅ JS nhận yêu cầu đổi ngôn ngữ');");
+
+                if (isEnglishToVietnamese)
+                {
+                    await WebView.CoreWebView2.ExecuteScriptAsync("window.handleLanguageSwitch('en-US', 'vi');");
+                }
+                else
+                {
+                    await WebView.CoreWebView2.ExecuteScriptAsync("window.handleLanguageSwitch('vi-VN', 'en');");
+                }
+
+                isEnglishToVietnamese = !isEnglishToVietnamese;
+            }
+        }
+
+
+
+
+
+
+
+        protected override void OnKeyDown(KeyEventArgs e)
+        {
+            base.OnKeyDown(e);
+
+            if (e.Key == Key.A)
+            {
+                ToggleLanguage_Click(null, null);
+            }
         }
 
 
